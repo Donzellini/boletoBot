@@ -26,7 +26,14 @@ class Config:
     LISTA_FUNCOES_SCRAPERS = [s.strip() for s in raw_scrapers.split(",") if s.strip()]
 
     TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
-    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+    ALLOWED_USERS = os.getenv("ALLOWED_USERS")
+
+    SHEET_NAME = os.getenv("SHEET_NAME")
+    MAPA_CATEGORIAS = os.getenv("MAPA_CATEGORIAS")
+    RATEIO_NEKO = os.getenv("RATEIO_NEKO")
+    RATEIO_BAKA = os.getenv("RATEIO_BAKA")
+    CATEGORIAS_MANUAIS = os.getenv("CATEGORIAS_MANUAIS")
+
 
 
 if not os.path.exists(Config.TEMP_DIR):

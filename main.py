@@ -48,10 +48,7 @@ def executar_ciclo_coleta():
 
 
 if __name__ == "__main__":
-    # 1. Rodar a coleta uma vez ao iniciar
-    executar_ciclo_coleta()
-
-    # 2. Iniciar o Bot em modo de escuta (Polling)
+    # Iniciar o Bot em modo de escuta (Polling)
     # Isso permite que o Gatekeeper e os botões interativos funcionem
     logger.info("🤖 Bot em modo interativo. Aguardando comandos...")
     bot.polling(non_stop=True)

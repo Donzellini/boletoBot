@@ -1,6 +1,35 @@
 import re
 import pdfplumber
 
+
+def extrair_valor_da_linha(linha):
+    """
+    Decifra o valor diretamente da linha digitável.
+    Suporta Boletos Bancários e Contas de Consumo (Claro, CPFL, etc).
+    """
+    if not linha or len(linha) < 44:
+        return None
+
+    try:
+        # CASO 1: Contas de Consumo/Tributos (Começa com 8)
+        # Ex: 8464000000029972... -> O valor está entre a 5ª e a 15ª posição
+        if linha.startswith('8'):
+            valor_str = linha[4:15]  # Pega os 11 dígitos de valor
+            valor_float = int(valor_str) / 100.0
+
+        # CASO 2: Boletos Bancários Comuns
+        # O valor está nos últimos 10 dígitos
+        else:
+            valor_str = linha[-10:]
+            valor_float = int(valor_str) / 100.0
+
+        if valor_float > 0:
+            return f"{valor_float:,.2f}".replace(',', 'X').replace('.', ',').replace('X', '.')
+
+    except Exception:
+        return None
+    return None
+
 def extrair_dados_de_texto(texto):
     """
     Inteligência central: recebe qualquer string (corpo de email ou texto de PDF)
