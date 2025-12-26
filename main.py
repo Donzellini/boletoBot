@@ -1,31 +1,21 @@
-import os
-from coletor_gmail import processar_email
-from scrapers import scrap_semae_piracicaba, scrap_llz_condominio
-from parser_pdf import extrair_dados_pdf
-import glob
-
+from services.gmail_service import buscar_faturas_email
+from services.scrapers import scrap_llz_condominio, scrap_semae_piracicaba
+from utils.helpers import exibir_resultado
 
 def executar_automacao():
-    print("🚀 Iniciando Ciclo de Automação de Boletos")
+    print("🚀 BOLETO BOT: Iniciando Ciclo de Orquestração\n")
 
-    # 1. Coleta do Gmail (O que já está funcionando)
-    boletos_gmail = processar_email()
+    # 1. Processar Gmail
+    lista_faturas = buscar_faturas_email()
 
-    # 2. Executa Scrapers Web (SEMAE / LLZ)
-    # Eles vão salvar arquivos em /tmp/boleto_bot
-    #scrap_semae_piracicaba()
-    #scrap_llz_condominio()
+    # 2. Processar Scrapers (Pode retornar um Boleto ou None)
+    boleto_llz = scrap_llz_condominio()
+    if boleto_llz: lista_faturas.append(boleto_llz)
 
-    # 3. Processa todos os PDFs que caíram na pasta temp
-    print("\n🧐 Processando arquivos baixados pelos scrapers...")
-    arquivos_baixados = glob.glob("/tmp/boleto_bot/*.pdf")
-
-    for pdf in arquivos_baixados:
-        # Lógica para decidir se precisa de senha (ex: se o nome tiver 'Comgas')
-        senha = os.getenv("CPF_SENHA") if "comgás" in pdf.lower() else None
-        codigo = extrair_dados_pdf(pdf, password=senha)
-        print(f"📄 Arquivo: {os.path.basename(pdf)} | Código: {codigo}")
-
+    # 3. Exibir Resumo e futuramente enviar para Telegram
+    print(f"\n📊 Resumo da Coleta: {len(lista_faturas)} itens encontrados.")
+    for fatura in lista_faturas:
+        exibir_resultado(fatura)
 
 if __name__ == "__main__":
     executar_automacao()
