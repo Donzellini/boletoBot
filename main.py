@@ -3,52 +3,58 @@ from core.config import Config
 from core.database import inicializar_db, salvar_boleto_db
 from services.gmail_service import buscar_faturas_email
 from services.notification_service import enviar_notificacao_fatura, bot
-from utils.helpers import exibir_resultado, logger
+from utils.helpers import exibir_resultado_extracao, logger
 
 
 def executar_ciclo_coleta():
     """
-    Executa a parte de 'Inteligência' do Bot:
-    Busca e-mails, roda scrapers e envia para o Telegram.
+    Orquestra a busca de boletos: varre Gmail, executa scrapers web,
+    salva no banco de dados e notifica o usuário no Telegram.
     """
-    inicializar_db()
-    logger.info("🚀 Iniciando Orquestração com Banco de Dados")
+    try:
+        # 1. Garante que o banco de dados e tabelas existam
+        inicializar_db()
+        logger.info("🚀 Iniciando ciclo de coleta de faturas...")
 
-    # 1. Processar Gmail
-    lista_faturas = buscar_faturas_email()
+        # 2. Busca faturas no Gmail (PDFs e links)
+        lista_faturas = buscar_faturas_email()
 
-    # 2. Executar Scrapers dinâmicos (vimos no .env)
-    if Config.LISTA_FUNCOES_SCRAPERS:
-        for nome_funcao in Config.LISTA_FUNCOES_SCRAPERS:
-            try:
-                funcao_para_rodar = getattr(scrapers_module, nome_funcao, None)
-                if funcao_para_rodar and callable(funcao_para_rodar):
-                    logger.info(f"🔎 Rodando scraper: {nome_funcao}")
-                    resultado = funcao_para_rodar()
-                    if resultado:
-                        lista_faturas.append(resultado)
+        # 3. Executa Scrapers Web configurados no .env
+        if Config.LISTA_FUNCOES_SCRAPERS:
+            for nome_funcao in Config.LISTA_FUNCOES_SCRAPERS:
+                try:
+                    funcao_alvo = getattr(scrapers_module, nome_funcao, None)
+                    if funcao_alvo and callable(funcao_alvo):
+                        logger.info(f"🔎 Rodando scraper: {nome_funcao}")
+                        resultado = funcao_alvo()
+                        if resultado:
+                            lista_faturas.append(resultado)
+                except Exception as e:
+                    logger.error(f"❌ Erro ao executar scraper {nome_funcao}: {e}")
+
+        # 4. Processamento de Resultados
+        if not lista_faturas:
+            logger.info("Empty: Nenhum boleto novo encontrado.")
+        else:
+            for fatura in lista_faturas:
+                # Exibe no console/logs para monitoramento
+                exibir_resultado_extracao(fatura)
+
+                # Salva no banco (retorna True se for um boleto novo/inédito)
+                if salvar_boleto_db(fatura):
+                    enviar_notificacao_fatura(fatura)
                 else:
-                    logger.warning(f"⚠️ Função {nome_funcao} não encontrada em scrapers.py")
-            except Exception as e:
-                logger.error(f"❌ Erro ao executar {nome_funcao}: {e}")
+                    logger.info(f"⏭️ Ignorando duplicata: {fatura.titulo}")
 
-    # 3. Enviar resultados para o Telegram
-    if not lista_faturas:
-        logger.info("Empty: Nenhum boleto novo encontrado nesta rodada.")
-    else:
-        for fatura in lista_faturas:
-            exibir_resultado(fatura)
-            foi_salvo = salvar_boleto_db(fatura)
-            if foi_salvo:
-                enviar_notificacao_fatura(fatura)
-            else:
-                logger.info(f"⏭️ Ignorando duplicata: {fatura.titulo}")
+        logger.info("✅ Ciclo de coleta finalizado.")
 
-    logger.info("✅ Ciclo de coleta finalizado.")
+    except Exception as e:
+        logger.error(f"💥 Erro crítico no ciclo de coleta: {e}")
 
 
 if __name__ == "__main__":
-    # Iniciar o Bot em modo de escuta (Polling)
-    # Isso permite que o Gatekeeper e os botões interativos funcionem
-    logger.info("🤖 Bot em modo interativo. Aguardando comandos...")
+    # Inicialização do Bot
+    inicializar_db()
+
+    logger.info("🤖 BoletoBot Online e aguardando comandos...")
     bot.polling(non_stop=True)

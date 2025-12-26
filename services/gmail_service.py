@@ -4,8 +4,8 @@ from datetime import date, timedelta
 from imap_tools import MailBox, AND
 from core.models import Boleto
 from core.config import Config
-from core.parser_pdf import extrair_dados_de_texto, extrair_dados_pdf
-from services.web_downloader import baixar_boleto_bevi
+from utils.parser_pdf import extrair_dados_de_texto, extrair_dados_pdf
+from utils.web_downloader import baixar_boleto_bevi
 
 
 def buscar_faturas_email():

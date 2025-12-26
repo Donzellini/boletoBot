@@ -4,6 +4,10 @@ import re
 
 @dataclass
 class Boleto:
+    """
+    Representação padronizada de um boleto dentro do sistema.
+    Responsável por garantir que os dados básicos estejam limpos.
+    """
     origem: str
     titulo: str
     valor: Optional[str] = None
@@ -13,6 +17,10 @@ class Boleto:
     link_externo: Optional[str] = None
 
     def __post_init__(self):
-        """Limpa automaticamente a linha digitável ao criar o objeto."""
+        """
+        Executado automaticamente após a criação do objeto.
+        Limpa a linha digitável para manter apenas números.
+        """
         if self.linha_digitavel:
+            # Remove qualquer caractere que não seja número (pontos, espaços, barras)
             self.linha_digitavel = re.sub(r'\D', '', self.linha_digitavel)
