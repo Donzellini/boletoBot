@@ -6,6 +6,7 @@ import re
 class Boleto:
     origem: str
     titulo: str
+    valor: Optional[str] = None
     linha_digitavel: Optional[str] = None
     pix: Optional[str] = None
     arquivo_path: Optional[str] = None

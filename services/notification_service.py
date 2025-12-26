@@ -34,12 +34,24 @@ def enviar_notificacao_fatura(boleto):
         f"<b>🧾 NOVO BOLETO DETECTADO</b>\n"
         f"📂 <b>Origem:</b> {boleto.origem}\n"
         f"📄 <b>Item:</b> {boleto.titulo}\n\n"
+        f"💸 <b>Valor:</b> {boleto.valor}\n\n"
     )
 
     if boleto.pix:
         mensagem += f"✨ <b>Pix Copia e Cola:</b>\n<code>{boleto.pix}</code>"
     elif boleto.linha_digitavel:
         mensagem += f"🔢 <b>Linha Digitável:</b>\n<code>{boleto.linha_digitavel}</code>"
+
+    with get_db_connection() as conn:
+        res = conn.execute(
+            "SELECT id FROM boletos WHERE (pix IS NOT NULL AND pix = ?) OR (linha_digitavel IS NOT NULL AND linha_digitavel = ?)",
+            (boleto.pix, boleto.linha_digitavel)
+        ).fetchone()
+        id_db = res['id'] if res else "desconhecido"
+
+    markup = types.InlineKeyboardMarkup()
+    # AGORA o callback_data será 'pago_123' em vez de 'pago_Título'
+    markup.add(types.InlineKeyboardButton("✅ Marcar como Pago", callback_data=f"pago_{id_db}"))
 
     markup = types.InlineKeyboardMarkup()
     # Guardamos o título resumido no callback
@@ -95,8 +107,14 @@ def confirmar_pagamento(call):
 
     # 1. Atualiza o status no Banco de Dados
     with get_db_connection() as conn:
+        fatura = conn.execute("SELECT * FROM boletos WHERE id = ?", (id_boleto,)).fetchone()
         conn.execute("UPDATE boletos SET pago = 1 WHERE id = ?", (id_boleto,))
         conn.commit()
+
+    if fatura:
+        # Envia para o Sheets (converte o nome para o que está na planilha se necessário)
+        from services.sheets_service import atualizar_valor_planilha
+        atualizar_valor_planilha(fatura['origem'], fatura['valor'])
 
     # 2. Recupera o texto atual da mensagem para riscar
     texto_atual = call.message.text

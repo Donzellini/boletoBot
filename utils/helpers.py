@@ -20,6 +20,7 @@ def exibir_resultado(boleto):
     print("\n" + "=" * 50)
     logger.info(f"📄 FATURA DETECTADA: {boleto.titulo}")
     logger.info(f"📂 ORIGEM: {boleto.origem}")
+    logger.info(f"💸 VALOR: {boleto.valor}")
 
     if boleto.pix:
         logger.info(f"✨ PIX: {boleto.pix[:40]}...")
