@@ -25,6 +25,9 @@ class Config:
     raw_scrapers = os.getenv("SCRAPERS_ATIVOS", "")
     LISTA_FUNCOES_SCRAPERS = [s.strip() for s in raw_scrapers.split(",") if s.strip()]
 
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
+
 
 if not os.path.exists(Config.TEMP_DIR):
     os.makedirs(Config.TEMP_DIR)

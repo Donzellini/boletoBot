@@ -21,7 +21,7 @@ def buscar_faturas_email():
                 corpo = (msg.text + msg.html)
 
                 # 1. Busca Pix e Linha no corpo
-                regex_pix = r'000201[a-zA-Z0-9]+'
+                regex_pix = r'000201[\s\S]*?6304[A-Fa-f0-9]{4}'
                 match_pix = re.search(regex_pix, corpo)
                 if match_pix: novo_boleto.pix = match_pix.group(0)
 
