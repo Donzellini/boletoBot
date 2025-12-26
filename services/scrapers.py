@@ -13,6 +13,7 @@ import python_anticaptcha
 from core.models import Boleto
 
 from core.config import Config
+from utils.helpers import logger
 
 
 def configurar_driver():
@@ -33,7 +34,7 @@ def scrap_semae_piracicaba():
 
     try:
         driver.get("https://agenciaweb.semaepiracicaba.sp.gov.br/")
-        print("⌨️ Preenchendo SEMAE...")
+        logger.info("⌨️ Preenchendo SEMAE...")
         wait.until(EC.presence_of_element_located((By.ID, "NrMatriculaUnidade"))).send_keys(Config.SEMAE_USER)
         driver.find_element(By.ID, "NrCpfCnpj").send_keys(Config.SEMAE_CPF)
         driver.find_element(By.ID, "sDsSenha").send_keys(Config.SEMAE_PASS)
@@ -42,18 +43,18 @@ def scrap_semae_piracicaba():
         client = python_anticaptcha.AnticaptchaClient(Config.ANTICAPTCHA_KEY)
         task = python_anticaptcha.NoCaptchaTaskProxylessTask(driver.current_url, SITE_KEY)
         job = client.createTask(task)
-        print("⏳ Resolvendo Captcha SEMAE...")
+        logger.info("⏳ Resolvendo Captcha SEMAE...")
         job.join()
 
         token = job.get_solution_response()
         driver.execute_script(f'document.getElementById("g-recaptcha-response").innerHTML="{token}";')
         driver.find_element(By.ID, "botao_login").click()
 
-        print("✅ Login SEMAE realizado!")
+        logger.info("✅ Login SEMAE realizado!")
         # Lógica de navegação para Segunda Via aqui...
 
     except Exception as e:
-        print(f"❌ Erro SEMAE: {e}")
+        logger.error(f"❌ Erro SEMAE: {e}")
     finally:
         driver.quit()
 
@@ -65,13 +66,15 @@ def scrap_llz_condominio():
     try:
         driver.get("https://cliente.llzgarantidora.com.br/auth/entrar")
 
-        print("🔑 Logando na LLZ...")
+        logger.info("🔑 Realizando login no portal LLZ...")
         wait.until(EC.presence_of_element_located((By.NAME, "email"))).send_keys(Config.LLZ_USER)
         driver.find_element(By.NAME, "password").send_keys(Config.LLZ_PASS)
         driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
 
         # 1. Busca botão Pagar
         try:
+            logger.info("💰 Fatura aberta encontrada! Copiando código...")
+
             btn_pagar = WebDriverWait(driver, 15).until(
                 EC.presence_of_element_located((By.XPATH, "//button[contains(text(), 'Pagar')]"))
             )
@@ -94,11 +97,11 @@ def scrap_llz_condominio():
             )
 
         except Exception:
-            print("⚠️ Nenhuma fatura aberta na LLZ.")
+            logger.warning("🍃 Nenhuma fatura pendente na LLZ no momento.")
             return None
 
     except Exception as e:
-        print(f"❌ Erro LLZ: {e}")
+        logger.error(f"❌ Erro LLZ: {e}")
         return None
     finally:
         driver.quit()
