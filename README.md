@@ -16,6 +16,6 @@ Automação inteligente para coleta de faturas e extração de códigos de barra
 - Anti-Captcha API
 
 ## TO-DO
--[ ] Botão de limpeza da base de boletos, para facilitar testes
--[ ] Implementar leitura da conta de água (temos somente o ‘login’, não há boletos disponíveis)
--[ ] Ajustar visual dos botões
+- [ ] Botão de limpeza da base de boletos, para facilitar testes
+- [ ] Implementar leitura da conta de água (temos somente o ‘login’, não há boletos disponíveis)
+- [ ] Ajustar visual dos botões
