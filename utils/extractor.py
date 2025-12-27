@@ -13,7 +13,7 @@ def extrair_valor_da_linha(linha):
         # CASO 1: Contas de Consumo/Tributos (Começa com 8)
         # O valor fica entre a 5ª e a 15ª posição
         if linha.startswith('8'):
-            valor_str = linha[4:15]
+            valor_str = linha[12:16]
             valor_float = int(valor_str) / 100.0
         # CASO 2: Boletos Bancários Comuns
         # O valor está nos últimos 10 dígitos

@@ -2,6 +2,7 @@ import time
 import os
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.chrome.options import Options
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
@@ -17,19 +18,33 @@ from core.logger import logger
 
 def configurar_driver():
     """Configura o WebDriver para rodar em modo headless e gerenciar downloads."""
-    options = webdriver.ChromeOptions()
-    # Modo headless é essencial para rodar em servidores como o Fly.io
+    options = Options()
     options.add_argument("--headless")
     options.add_argument("--no-sandbox")
     options.add_argument("--disable-dev-shm-usage")
-
+    options.add_argument("--disable-gpu")
+    options.add_argument("--disable-extensions")
+    options.add_argument("--proxy-server='direct://'")
+    options.add_argument("--proxy-bypass-list=*")
+    options.add_argument("--start-maximized")
+    options.add_argument("--disable-infobars")
+    options.add_argument("--single-process")
+    options.add_argument("--disable-renderer-backgrounding")
+    options.add_argument("--disable-background-timer-throttling")
     prefs = {
         "download.default_directory": Config.TEMP_DIR,
         "download.prompt_for_download": False,
         "plugins.always_open_pdf_externally": True
     }
     options.add_experimental_option("prefs", prefs)
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+
+    if os.path.exists("/data"):
+        options.binary_location = "/usr/bin/chromium"
+        service = Service(executable_path="/usr/bin/chromedriver")
+    else:
+        service = Service(ChromeDriverManager().install())
+
+    return webdriver.Chrome(service=service, options=options)
 
 
 def scrap_semae_piracicaba():
@@ -88,14 +103,22 @@ def scrap_llz_condominio():
             )
             driver.execute_script("arguments[0].click();", btn_pagar)
 
+            driver.execute_script("""
+                window.ultimo_codigo_copiado = "";
+                navigator.clipboard.writeText = function(text) {
+                    window.ultimo_codigo_copiado = text;
+                    return Promise.resolve();
+                };
+            """)
+
             # Localiza o botão de copiar código de barras
             btn_copiar = wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar Código de Barras')]"))
             )
             driver.execute_script("arguments[0].click();", btn_copiar)
 
-            time.sleep(1)  # Pequena pausa para garantir que o clipboard seja atualizado
-            codigo = pyperclip.paste()
+            time.sleep(2)  # Pequena pausa para garantir que o clipboard seja atualizado
+            codigo = driver.execute_script("return window.ultimo_codigo_copiado;")
 
             logger.info("💰 Código de barras LLZ copiado com sucesso!")
             return Boleto(
@@ -104,8 +127,8 @@ def scrap_llz_condominio():
                 linha_digitavel=codigo
             )
 
-        except Exception:
-            logger.info("🍃 Nenhuma fatura pendente encontrada na LLZ.")
+        except Exception as e:
+            logger.info(f"🍃 Nenhuma fatura pendente encontrada na LLZ. Erro: {e}")
             return None
 
     except Exception as e:
