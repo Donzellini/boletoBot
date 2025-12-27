@@ -6,7 +6,7 @@ from services.notification_service import enviar_notificacao_fatura, bot
 from utils.helpers import exibir_resultado_extracao, logger
 
 
-def executar_ciclo_coleta():
+def executar_ciclo_coleta(solicitante_id=None):
     """
     Orquestra a busca de boletos: varre Gmail, executa scrapers web,
     salva no banco de dados e notifica o usuário no Telegram.
@@ -42,7 +42,7 @@ def executar_ciclo_coleta():
 
                 # Salva no banco (retorna True se for um boleto novo/inédito)
                 if salvar_boleto_db(fatura):
-                    enviar_notificacao_fatura(fatura)
+                    enviar_notificacao_fatura(fatura, target_user=solicitante_id)
                 else:
                     logger.info(f"⏭️ Ignorando duplicata: {fatura.titulo}")
 

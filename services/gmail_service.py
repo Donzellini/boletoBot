@@ -4,6 +4,7 @@ from datetime import date, timedelta
 from imap_tools import MailBox, AND
 from core.models import Boleto
 from core.config import Config
+from utils.helpers import extrair_mes_referencia
 from utils.parser_pdf import extrair_dados_de_texto, extrair_dados_pdf
 from utils.web_downloader import baixar_boleto_bevi
 
@@ -28,6 +29,8 @@ def buscar_faturas_email():
                 novo_boleto.linha_digitavel = dados_corpo["linha"]
                 novo_boleto.pix = dados_corpo["pix"]
                 novo_boleto.valor = dados_corpo["valor"]
+
+                novo_boleto.mes_referencia = extrair_mes_referencia(corpo)
 
                 # --- PASSO 2: Links Externos (Bevi) ---
                 if ("aluguel" in label.lower() or "bevi" in label.lower()) and not novo_boleto.linha_digitavel:

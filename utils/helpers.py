@@ -1,3 +1,6 @@
+import re
+from datetime import datetime
+
 from core.logger import logger
 
 
@@ -43,3 +46,14 @@ def formatar_mensagem_boleto(boleto):
         f"💳 *Método:* {pago_via}\n\n"
         f"`{conteudo}`"
     )
+
+def extrair_mes_referencia(texto):
+    """
+    Busca uma data no formato DD/MM/AAAA e retorna MM/AAAA.
+    Se não encontrar, retorna o mês atual como fallback.
+    """
+    if texto:
+        match = re.search(r'(\d{2})[./](\d{2})[./](\d{4})', texto)
+        if match:
+            return f"{match.group(2)}/{match.group(3)}"
+    return datetime.now().strftime("%m/%Y")

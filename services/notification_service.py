@@ -1,4 +1,7 @@
 import os
+import re
+from datetime import datetime
+
 import telebot
 from telebot import types, apihelper
 from core.config import Config
@@ -47,7 +50,7 @@ def main_menu():
 
 
 # --- NOTIFICAÇÕES AUTOMÁTICAS ---
-def enviar_notificacao_fatura(boleto):
+def enviar_notificacao_fatura(boleto, target_user=None):
     """Envia a fatura detectada com botão para marcar como pago."""
     mensagem = (
         f"<b>🧾 NOVO BOLETO DETECTADO</b>\n"
@@ -73,8 +76,8 @@ def enviar_notificacao_fatura(boleto):
     markup = types.InlineKeyboardMarkup()
     markup.add(types.InlineKeyboardButton("✅ Marcar como Pago", callback_data=f"pago_{id_db}"))
 
-    # Envia para todos os usuários permitidos
-    for user_id in Config.ALLOWED_USERS:
+    destinatarios = [target_user] if target_user else Config.ALLOWED_USERS
+    for user_id in destinatarios:
         try:
             bot.send_message(user_id, mensagem, reply_markup=markup, parse_mode="HTML")
         except Exception as e:
@@ -95,7 +98,7 @@ def trigger_busca_manual(message):
     try:
         # Import local para evitar Circular Import
         from main import executar_ciclo_coleta
-        executar_ciclo_coleta()
+        executar_ciclo_coleta(solicitante_id=message.from_user.id)
         bot.send_message(message.chat.id, "✅ Busca finalizada!")
     except Exception as e:
         logger.error(f"Erro na busca manual: {e}")
@@ -163,15 +166,37 @@ def processar_valor_manual(message, categoria):
 
 
 def finalizar_lancamento_manual(message, categoria, valor):
+    """Agora, em vez de salvar direto, pergunta o mês."""
+    descricao = message.text
+    # Sugere o mês atual como padrão para facilitar
+    mes_atual = datetime.now().strftime("%m/%Y")
+
+    msg = bot.send_message(
+        message.chat.id,
+        f"📅 Para qual <b>mês</b> é esse gasto?\nResponda no formato MM/AAAA (Ex: {mes_atual}):"
+    )
+    # Passa os dados acumulados para o passo final
+    bot.register_next_step_handler(msg, salvar_final_com_mes, categoria, valor, descricao)
+
+
+def salvar_final_com_mes(message, categoria, valor, descricao):
+    """Recebe o mês e finalmente envia para a planilha."""
+    mes_ref = message.text.strip()
+
+    # Validação simples de formato
+    if not re.match(r'\d{2}/\d{4}', mes_ref):
+        bot.send_message(message.chat.id, "❌ Formato inválido! Use MM/AAAA. Tente lançar novamente.")
+        return
+
     from services.sheets_service import lancar_gasto_dinamico
-    res = lancar_gasto_dinamico(categoria, message.text, str(valor), message.from_user.id)
+    # Enviamos o mes_ref para o serviço de planilha
+    res = lancar_gasto_dinamico(categoria, descricao, str(valor), message.from_user.id, mes_referencia=mes_ref)
 
     if res["sucesso"]:
         confirmacao = (
-            f"✅ <b>Lançado!</b>\n"
+            f"✅ <b>Lançado em {mes_ref}!</b>\n"
             f"📂 {res['categoria']} | 📝 {res['item']}\n"
-            f"💰 Total: R$ {res['total']:.2f}\n"
-            f"🤝 Parte do {res['nome_parceiro']}: R$ {res['parte_parceiro']:.2f}"
+            f"💰 Total: R$ {res['total']:.2f}"
         )
         bot.send_message(message.chat.id, confirmacao, parse_mode="HTML")
 
@@ -186,7 +211,7 @@ def confirmar_pagamento(call):
 
     if fatura:
         from services.sheets_service import atualizar_valor_planilha
-        atualizar_valor_planilha(fatura['origem'], fatura['valor'])
+        atualizar_valor_planilha(fatura['origem'], fatura['valor'], fatura['mes_referencia'])
         bot.edit_message_text(f"✅ <b>PAGO:</b> {fatura['titulo']}", call.message.chat.id, call.message.message_id,
                               parse_mode="HTML")
 
