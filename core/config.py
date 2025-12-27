@@ -29,7 +29,7 @@ class Config:
     LISTA_FUNCOES_SCRAPERS = [s.strip() for s in raw_scrapers.split(",") if s.strip()]
 
     # --- TELEGRAM ---
-    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
+    TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN", "user_id:bot_token")
     # IDs permitidos (convertidos para int para o middleware de segurança)
     raw_allowed = os.getenv("ALLOWED_USERS", "")
     ALLOWED_USERS = [int(u.strip()) for u in raw_allowed.split(",") if u.strip()]

@@ -1,9 +1,10 @@
 import sqlite3
 import os
-from core.config import Config
 
-# Define o caminho do banco de dados baseado no diretório temporário configurado
-DB_PATH = os.path.join(os.path.dirname(Config.TEMP_DIR), "boletos.db")
+if os.path.exists("/data"):
+    DB_PATH = "/data/boletos.db"
+else:
+    DB_PATH = os.path.join(os.getcwd(), "boletos.db")
 
 
 def get_db_connection():
