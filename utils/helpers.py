@@ -27,3 +27,19 @@ def exibir_resultado_extracao(boleto):
 def formatar_moeda_brasileira(valor_float):
     """Auxiliar simples para exibir valores formatados no console ou logs."""
     return "{:,.2f}".format(valor_float).replace(',', 'v').replace('.', ',').replace('v', '.')
+
+
+def formatar_mensagem_boleto(boleto):
+    """Lê os dados do dicionário/sqlite3.Row usando chaves."""
+    # Acesso via colchetes para compatibilidade com banco de dados
+    pago_via = "💠 PIX" if boleto['pix'] else "📑 Linha Digitável"
+    conteudo = boleto['pix'] if boleto['pix'] else boleto['linha_digitavel']
+
+    return (
+        f"🚨 *Fatura Pendente Encontrada!* \n\n"
+        f"🏷️ *Origem:* {boleto['origem']}\n"
+        f"📝 *Título:* {boleto['titulo']}\n"
+        f"💰 *Valor:* R$ {boleto['valor'] if boleto['valor'] else 'Não identificado'}\n"
+        f"💳 *Método:* {pago_via}\n\n"
+        f"`{conteudo}`"
+    )

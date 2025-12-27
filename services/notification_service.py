@@ -4,6 +4,7 @@ from telebot import types, apihelper
 from core.config import Config
 from core.database import get_db_connection
 from core.logger import logger
+from utils.helpers import formatar_mensagem_boleto
 
 # Configurações iniciais
 apihelper.ENABLE_MIDDLEWARE = True
@@ -184,4 +185,10 @@ def listar_pendentes(m):
     for f in faturas:
         markup = types.InlineKeyboardMarkup()
         markup.add(types.InlineKeyboardButton("✅ Marcar como Pago", callback_data=f"pago_{f['id']}"))
-        bot.send_message(m.chat.id, f"🧾 <b>{f['titulo']}</b>\n💸 {f['valor']}", reply_markup=markup, parse_mode="HTML")
+        msg_formatada = formatar_mensagem_boleto(f)
+        bot.send_message(
+            m.chat.id,
+            msg_formatada,
+            reply_markup=markup,
+            parse_mode="Markdown"
+        )
