@@ -12,6 +12,7 @@ class Boleto:
     titulo: str
     valor: Optional[str] = None
     linha_digitavel: Optional[str] = None
+    mes_referencia: Optional[str] = None
     pix: Optional[str] = None
     arquivo_path: Optional[str] = None
     link_externo: Optional[str] = None

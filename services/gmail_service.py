@@ -17,7 +17,8 @@ def buscar_faturas_email():
             mailbox.folder.set(label)
 
             for msg in mailbox.fetch(AND(date_gte=data_busca)):
-                novo_boleto = Boleto(origem=label, titulo=msg.subject)
+                mes_ref = msg.date.strftime("%m/%Y")
+                novo_boleto = Boleto(origem=label, titulo=msg.subject, mes_referencia=mes_ref)
 
                 # --- PASSO 1: Extração do CORPO (Texto/HTML) ---
                 corpo = (msg.text + msg.html)

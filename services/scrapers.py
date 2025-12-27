@@ -1,5 +1,8 @@
+import re
 import time
 import os
+from datetime import datetime
+
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -97,7 +100,37 @@ def scrap_llz_condominio():
         driver.find_element(By.CSS_SELECTOR, "button[type='submit']").click()
 
         try:
-            # Tenta localizar o botão 'Pagar' para abrir os detalhes da fatura
+
+            try:
+                elemento_valor = wait.until(
+                    EC.presence_of_element_located((By.XPATH, "//div[contains(text(), 'R$')]"))
+                )
+                valor_texto = elemento_valor.text.replace('R$', '').replace('\xa0', '').strip()
+                logger.info(f"💰 Valor LLZ identificado: R$ {valor_texto}")
+            except Exception as e:
+                logger.warning(f"⚠️ Não foi possível capturar o valor da LLZ: {e}")
+                valor_texto = None
+
+            try:
+                elementos = driver.find_elements(By.XPATH, "//*[contains(text(), '/20')]")
+
+                data_vencimento = None
+                for el in elementos:
+                    match = re.search(r'(\d{2}/\d{2}/\d{4})', el.text)
+                    if match:
+                        data_vencimento = match.group(1)
+                        break
+
+                if data_vencimento:
+                    mes_ref = "/".join(data_vencimento.split("/")[1:])
+                    logger.info(f"📅 Mês de referência LLZ: {mes_ref}")
+                else:
+                    mes_ref = datetime.now().strftime("%m/%Y")
+
+            except Exception as e:
+                logger.warning(f"⚠️ Erro ao extrair data, usando mês atual: {e}")
+                mes_ref = datetime.now().strftime("%m/%Y")
+
             btn_pagar = wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(text(), 'Pagar')]"))
             )
@@ -111,20 +144,21 @@ def scrap_llz_condominio():
                 };
             """)
 
-            # Localiza o botão de copiar código de barras
             btn_copiar = wait.until(
                 EC.element_to_be_clickable((By.XPATH, "//button[contains(., 'Copiar Código de Barras')]"))
             )
             driver.execute_script("arguments[0].click();", btn_copiar)
 
-            time.sleep(2)  # Pequena pausa para garantir que o clipboard seja atualizado
+            time.sleep(2)
             codigo = driver.execute_script("return window.ultimo_codigo_copiado;")
 
             logger.info("💰 Código de barras LLZ copiado com sucesso!")
             return Boleto(
                 origem="Finances/Condomínio (LLZ)",
                 titulo="Fatura Condomínio - LLZ",
-                linha_digitavel=codigo
+                valor=valor_texto,
+                linha_digitavel=codigo,
+                mes_referencia = mes_ref
             )
 
         except Exception as e:
@@ -136,3 +170,8 @@ def scrap_llz_condominio():
         return None
     finally:
         driver.quit()
+
+
+if __name__ == '__main__':
+    boleto_llz = scrap_llz_condominio()
+    logger.info(boleto_llz)

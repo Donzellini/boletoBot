@@ -22,11 +22,27 @@ def restrict_access(bot_instance, update):
 
 # --- INTERFACE (TECLADO PRINCIPAL) ---
 def main_menu():
-    m = types.ReplyKeyboardMarkup(resize_keyboard=True)
-    m.add(types.KeyboardButton("🔍 Buscar Novos Boletos"))
-    m.add(types.KeyboardButton("📊 Resumo Mensal"))
-    m.add(types.KeyboardButton("🧾 Boletos Pendentes"), types.KeyboardButton("➕ Lançar Gasto"))
-    m.add(types.KeyboardButton("✅ Ver Pagos"))
+    # resize_keyboard mantém os botões em um tamanho compacto no celular
+    m = types.ReplyKeyboardMarkup(resize_keyboard=True, row_width=2)
+
+    # Linha 1: Ação Principal (Destaque)
+    m.row(types.KeyboardButton("🔍 Buscar Novos Boletos"))
+
+    # Linha 2: Operações Financeiras (Lado a lado)
+    m.row(
+        types.KeyboardButton("🧾 Boletos Pendentes"),
+        types.KeyboardButton("➕ Lançar Gasto")
+    )
+
+    # Linha 3: Relatórios e Histórico (Lado a lado)
+    m.row(
+        types.KeyboardButton("📊 Resumo Mensal"),
+        types.KeyboardButton("✅ Ver Pagos")
+    )
+
+    # Linha 4: Manutenção (Discreta na base)
+    m.row(types.KeyboardButton("🗑️ Limpar Base de Dados"))
+
     return m
 
 
@@ -36,7 +52,8 @@ def enviar_notificacao_fatura(boleto):
     mensagem = (
         f"<b>🧾 NOVO BOLETO DETECTADO</b>\n"
         f"📂 <b>Origem:</b> {boleto.origem}\n"
-        f"📄 <b>Item:</b> {boleto.titulo}\n\n"
+        f"📄 <b>Item:</b> {boleto.titulo}\n"
+        f"📄 <b>Mês Referência:</b> {boleto.mes_referencia}\n"
         f"💸 <b>Valor:</b> {boleto.valor if boleto.valor else 'Não identificado'}\n"
     )
 
@@ -192,3 +209,42 @@ def listar_pendentes(m):
             reply_markup=markup,
             parse_mode="Markdown"
         )
+
+
+# --- LIMPEZA DA BASE ---
+@bot.message_handler(func=lambda m: m.text == "🗑️ Limpar Base de Dados")
+def confirmar_limpeza(message):
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("⚠️ SIM, APAGAR TUDO", callback_data="confirmar_reset_db"))
+    markup.add(types.InlineKeyboardButton("❌ Cancelar", callback_data="cancelar_operacao"))
+
+    bot.send_message(
+        message.chat.id,
+        "❓ <b>Tem certeza?</b>\nIsto apagará todos os boletos identificados (pendentes e pagos) e não pode ser desfeito.",
+        reply_markup=markup,
+        parse_mode="HTML"
+    )
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "confirmar_reset_db")
+def resetar_db(call):
+    from core.database import get_db_connection
+    try:
+        with get_db_connection() as conn:
+            # Apaga os dados mas mantém a estrutura das tabelas
+            conn.execute("DELETE FROM boletos")
+            # Reinicia o contador de IDs (opcional)
+            conn.execute("DELETE FROM sqlite_sequence WHERE name='boletos'")
+            conn.commit()
+
+        bot.edit_message_text("✅ <b>Base de dados limpa com sucesso!</b>",
+                              call.message.chat.id, call.message.message_id, parse_mode="HTML")
+        logger.info("🗑️ Base de dados resetada pelo usuário.")
+    except Exception as e:
+        bot.send_message(call.message.chat.id, f"❌ Erro ao limpar base: {e}")
+
+
+@bot.callback_query_handler(func=lambda call: call.data == "cancelar_operacao")
+def cancelar_acao(call):
+    bot.edit_message_text("❌ Operação cancelada.", call.message.chat.id, call.message.message_id)
+

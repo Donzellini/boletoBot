@@ -16,8 +16,9 @@ Automação inteligente para coleta de faturas e extração de códigos de barra
 - Anti-Captcha API
 
 ## TO-DO
-- [ ] Botão de limpeza da base de boletos, para facilitar testes
+- [x] Botão de limpeza da base de boletos, para facilitar testes
 - [ ] Implementar leitura da conta de água (temos somente o ‘login’, não há boletos disponíveis)
 - [ ] Ajustar visual dos botões
-- [ ] Recuperar valor do boleto do condominio
-- [ ] Recuperar data dos boletos e validar no banco se o boleto daqela conta e daquele mes já foram lançados
+- [x] Recuperar valor do boleto do condominio
+- [x] Recuperar data dos boletos e validar no banco se o boleto daquela conta e daquele mes já foram lançados
+  - [ ] Recuperou a data do email, o ideal é recuperar do próprio boleto

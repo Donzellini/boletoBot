@@ -31,7 +31,6 @@ def formatar_moeda_brasileira(valor_float):
 
 def formatar_mensagem_boleto(boleto):
     """Lê os dados do dicionário/sqlite3.Row usando chaves."""
-    # Acesso via colchetes para compatibilidade com banco de dados
     pago_via = "💠 PIX" if boleto['pix'] else "📑 Linha Digitável"
     conteudo = boleto['pix'] if boleto['pix'] else boleto['linha_digitavel']
 
@@ -39,6 +38,7 @@ def formatar_mensagem_boleto(boleto):
         f"🚨 *Fatura Pendente Encontrada!* \n\n"
         f"🏷️ *Origem:* {boleto['origem']}\n"
         f"📝 *Título:* {boleto['titulo']}\n"
+        f"📄 *Mês Referência:* {boleto['mes_referencia']}\n"
         f"💰 *Valor:* R$ {boleto['valor'] if boleto['valor'] else 'Não identificado'}\n"
         f"💳 *Método:* {pago_via}\n\n"
         f"`{conteudo}`"

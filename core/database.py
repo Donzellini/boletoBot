@@ -20,29 +20,15 @@ def inicializar_db():
         conn.execute("""
                      CREATE TABLE IF NOT EXISTS boletos
                      (
-                         id
-                         INTEGER
-                         PRIMARY
-                         KEY
-                         AUTOINCREMENT,
-                         origem
-                         TEXT,
-                         titulo
-                         TEXT,
-                         linha_digitavel
-                         TEXT,
-                         pix
-                         TEXT,
-                         valor
-                         TEXT, -- Armazenado como TEXT para preservar a formatação original
-                         pago
-                         INTEGER
-                         DEFAULT
-                         0,
-                         data_identificacao
-                         TIMESTAMP
-                         DEFAULT
-                         CURRENT_TIMESTAMP
+                         id INTEGER PRIMARY KEY AUTOINCREMENT,
+                         origem TEXT,
+                         titulo TEXT,
+                         linha_digitavel TEXT,
+                         pix TEXT,
+                         valor TEXT,
+                         pago INTEGER DEFAULT 0,
+                         mes_referencia TEXT,
+                         data_identificacao TIMESTAMP DEFAULT CURRENT_TIMESTAMP
                      )
                      """)
         conn.commit()
@@ -58,15 +44,17 @@ def salvar_boleto_db(boleto):
         existe = conn.execute(
             "SELECT id FROM boletos WHERE "
             "(pix IS NOT NULL AND pix = ?) OR "
-            "(linha_digitavel IS NOT NULL AND linha_digitavel = ?)",
-            (boleto.pix, boleto.linha_digitavel)
+            "(linha_digitavel IS NOT NULL AND linha_digitavel = ?) OR"
+            "(origem = ? AND mes_referencia = ?)",
+            (boleto.pix, boleto.linha_digitavel, boleto.origem, boleto.mes_referencia)
         ).fetchone()
+        existe = False
 
         if not existe:
             conn.execute(
-                "INSERT INTO boletos (origem, titulo, linha_digitavel, pix, valor) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (boleto.origem, boleto.titulo, boleto.linha_digitavel, boleto.pix, boleto.valor)
+                "INSERT INTO boletos (origem, titulo, linha_digitavel, pix, valor, mes_referencia) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                (boleto.origem, boleto.titulo, boleto.linha_digitavel, boleto.pix, boleto.valor, boleto.mes_referencia)
             )
             conn.commit()
             return True
