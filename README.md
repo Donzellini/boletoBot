@@ -19,3 +19,5 @@ Automação inteligente para coleta de faturas e extração de códigos de barra
 - [ ] Botão de limpeza da base de boletos, para facilitar testes
 - [ ] Implementar leitura da conta de água (temos somente o ‘login’, não há boletos disponíveis)
 - [ ] Ajustar visual dos botões
+- [ ] Recuperar valor do boleto do condominio
+- [ ] Recuperar data dos boletos e validar no banco se o boleto daqela conta e daquele mes já foram lançados
