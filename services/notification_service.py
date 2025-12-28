@@ -74,6 +74,7 @@ def enviar_notificacao_fatura(boleto, target_user=None):
         id_db = res['id'] if res else "unknown"
 
     markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("📊 Lançar na Planilha", callback_data=f"lncsht_{id_db}"))
     markup.add(types.InlineKeyboardButton("✅ Marcar como Pago", callback_data=f"pago_{id_db}"))
 
     destinatarios = [target_user] if target_user else Config.ALLOWED_USERS
@@ -82,6 +83,26 @@ def enviar_notificacao_fatura(boleto, target_user=None):
             bot.send_message(user_id, mensagem, reply_markup=markup, parse_mode="HTML")
         except Exception as e:
             logger.error(f"Erro ao enviar notificação para {user_id}: {e}")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('lncsht_'))
+def processar_lancamento_planilha(call):
+    bot.answer_callback_query(call.id, "⌛ Processando lançamento...")
+    id_boleto = call.data.split('_')[1]
+
+    with get_db_connection() as conn:
+        fatura = conn.execute("SELECT * FROM boletos WHERE id = ?", (id_boleto,)).fetchone()
+
+    if fatura:
+        from services.sheets_service import atualizar_valor_planilha
+        sucesso = atualizar_valor_planilha(fatura['origem'], fatura['valor'], fatura['mes_referencia'])
+
+        if sucesso:
+            novo_texto = call.message.text + "\n\n✅ <b>Provisionado na planilha!</b>"
+            bot.edit_message_text(novo_texto, call.message.chat.id, call.message.message_id,
+                                  reply_markup=call.message.reply_markup, parse_mode="HTML")
+        else:
+            bot.send_message(call.message.chat.id, "❌ Erro ao atualizar planilha da Comgás.")
 
 
 # --- HANDLERS DE COMANDOS ---
@@ -226,6 +247,7 @@ def listar_pendentes(m):
 
     for f in faturas:
         markup = types.InlineKeyboardMarkup()
+        markup.add(types.InlineKeyboardButton("📊 Lançar na Planilha", callback_data=f"lncsht_{f['id']}"))
         markup.add(types.InlineKeyboardButton("✅ Marcar como Pago", callback_data=f"pago_{f['id']}"))
         msg_formatada = formatar_mensagem_boleto(f)
         bot.send_message(
