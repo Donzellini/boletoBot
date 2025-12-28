@@ -119,7 +119,9 @@ def lancar_gasto_dinamico(categoria, item, valor_str, user_id, mes_referencia=No
             if celulas_cat:
                 linha_alvo = celulas_cat[-1].row + 1
             else:
-                linha_alvo = aba.find("TOTAL GERAL").row
+                valores_coluna_a = aba.col_values(1)
+                linha_alvo = len(valores_coluna_a) + 1
+                logger.info(f"📂 Nova categoria detectada ({cat_upper}). Alocando na linha {linha_alvo}")
 
             aba.insert_row([], linha_alvo)
             logger.info(f"➕ Inserindo novo gasto em {cat_upper}")
