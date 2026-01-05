@@ -86,3 +86,13 @@ O projeto utiliza um `Dockerfile` otimizado para ambientes de baixa memória:
 
 * **Swap Automatizado**: Cria 512MB de memória virtual no boot para suportar o Chrome Headless sem travamentos.
 * **Persistência**: O banco de dados SQLite é armazenado no volume `/data`, preservando os dados entre reinicializações.
+
+## TODO
+
+- [ ] Rever data de competência da conta de água 
+  - Recupera o mês de competência, e não a data de vencimento, então lança na aba incorreta da planilha.
+- [ ] Rever lógica de busca dos boletos do endereço eletrónico
+  - Possível ajuste: buscar o mês passado inteiro e o atual
+  - Melhorar a identificação do mês de competência
+- [ ] Feature: acrescentar no resumo o detalhamento das despesas
+- [ ] Feature: Melhorar a descrição dos bletos pagos
