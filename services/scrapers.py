@@ -75,8 +75,56 @@ def scrap_semae_piracicaba():
         driver.execute_script(f'document.getElementById("g-recaptcha-response").innerHTML="{token}";')
         driver.find_element(By.ID, "botao_login").click()
 
-        logger.info("✅ Login SEMAE realizado com sucesso!")
-        # TODO: Adicionar lógica de navegação para extração da linha digitável se necessário
+        # Navegação após login
+        logger.info("✅ Login realizado. Navegando para faturas...")
+
+        # Passo 1: Clicar em Dados Cadastrais (ajuste o seletor se necessário para o menu)
+        btn_agencia = wait.until(EC.presence_of_element_located(
+            (By.XPATH, "//a[contains(@class, 'agencia') and contains(., 'MINHA AGÊNCIA')]")
+        ))
+
+        # Força o clique via JavaScript (ignora se o elemento está 'oculto' ou sobreposto)
+        driver.execute_script("arguments[0].click();", btn_agencia)
+
+        # Passo 2: Localizar a linha PENDENTE na tabela
+        # Buscamos a linha que contém o texto 'PENDENTE' dentro da tabela de faturas
+        linha_pendente = wait.until(EC.presence_of_element_located(
+            (By.XPATH, "//table[@id='GridFaturaResumo_Table']//tr[td[contains(text(), 'PENDENTE')]]")
+        ))
+
+        # Extração de Metadados da linha
+        colunas = linha_pendente.find_elements(By.TAG_NAME, "td")
+        mes_ref = colunas[1].text  # "12/2025"
+        valor_texto = colunas[4].text.replace('R$', '').strip()  # "66,75"
+
+        # Clica na linha para selecioná-la (necessário para habilitar o botão de código de barras)
+        linha_pendente.click()
+        time.sleep(1)
+
+        # Passo 3: Clicar no botão "Exibir código de barras"
+        btn_barras = wait.until(EC.element_to_be_clickable((By.ID, "btnExibirCodigoBarras")))
+        driver.execute_script("arguments[0].click();", btn_barras)
+
+        # Passo 4: Extrair o código do botão de cópiaick
+        btn_copiar = wait.until(EC.presence_of_element_located(
+            (By.XPATH, "//button[contains(text(), 'Copiar Código')]")
+        ))
+
+        onclick_attr = btn_copiar.get_attribute("onclick")
+        match_codigo = re.search(r"'\s*(\d+)\s*'", onclick_attr)
+
+        if match_codigo:
+            codigo_barras = match_codigo.group(1)
+            logger.info(f"💰 SEMAE: Fatura {mes_ref} capturada com sucesso.")
+
+            return Boleto(
+                origem="Finances/SEMAE",
+                titulo=f"Fatura Água SEMAE - {mes_ref}",
+                valor=valor_texto,
+                linha_digitavel=codigo_barras,
+                mes_referencia=mes_ref
+            )
+
         return None
 
     except Exception as e:

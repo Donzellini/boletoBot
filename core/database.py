@@ -48,6 +48,7 @@ def salvar_boleto_db(boleto):
             "(origem = ? AND mes_referencia = ?)",
             (boleto.pix, boleto.linha_digitavel, boleto.origem, boleto.mes_referencia)
         ).fetchone()
+        # existe = False
 
         if not existe:
             conn.execute(

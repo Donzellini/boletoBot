@@ -18,6 +18,7 @@ def executar_ciclo_coleta(solicitante_id=None):
 
         # 2. Busca faturas no Gmail (PDFs e links)
         lista_faturas = buscar_faturas_email()
+        # lista_faturas = []
 
         # 3. Executa Scrapers Web configurados no .env
         if Config.LISTA_FUNCOES_SCRAPERS:
