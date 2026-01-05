@@ -90,13 +90,17 @@ def lancar_gasto_dinamico(categoria, item, valor_str, user_id, mes_referencia=No
         cat_upper = categoria.upper()
         item_upper = item.upper()
 
-        # Lógica de Rateio baseada em quem enviou (Neko ou Baka)
-        is_neko = str(user_id) == Config.ID_NEKO
-        taxa_parceiro = Config.RATEIO_BAKA if is_neko else Config.RATEIO_NEKO
-        nome_parceiro = "BAKA" if is_neko else "NEKO"
-
         valor_float = float(valor_str)
-        parte_parceiro = valor_float * taxa_parceiro
+
+        # Lógica de Rateio baseada em quem enviou (Neko ou Baka)
+        if str(user_id) == Config.ID_NEKO:
+            taxa_do_parceiro = Config.RATEIO_BAKA
+            nome_parceiro = "BAKA"
+        else:
+            taxa_do_parceiro = Config.RATEIO_NEKO
+            nome_parceiro = "NEKO"
+
+        parte_parceiro = valor_float * taxa_do_parceiro
 
         val_fmt = "{:.2f}".format(valor_float).replace('.', ',')
         parc_fmt = "{:.2f}".format(parte_parceiro).replace('.', ',')
