@@ -305,11 +305,22 @@ def selecionar_mes_detalhes(message):
 
     # Gerar botões para os últimos 6 meses (exemplo)
     from datetime import datetime, timedelta
+
+    hoje = datetime.now().replace(day=15)
     botoes = []
-    for i in range(6):
-        data = (datetime.now().replace(day=1) - timedelta(days=i * 30))
-        mes_ano = data.strftime("%m/%Y")
-        botoes.append(types.InlineKeyboardButton(mes_ano, callback_data=f"detalhe_mes_{mes_ano}"))
+
+    for i in range(-3, 4):
+        # Lógica para calcular o mês relativo
+        data_alvo = hoje + timedelta(days=i * 30)
+        mes_ano = data_alvo.strftime("%m/%Y")
+
+        # Um diferencial visual: colocar um ícone no mês atual
+        label = f"📍 {mes_ano}" if i == 0 else mes_ano
+
+        botoes.append(types.InlineKeyboardButton(
+            label,
+            callback_data=f"detalhe_mes_{mes_ano}"
+        ))
 
     markup.add(*botoes)
     bot.send_message(message.chat.id, "📅 Selecione o <b>mês</b> para ver os detalhes:",
