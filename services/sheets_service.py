@@ -43,19 +43,28 @@ def conectar_sheets(mes_alvo=None):
 
 def atualizar_valor_planilha(item_nome, valor_str, mes_referencia=None):
     """
-    Atualiza o valor de um boleto automático na planilha.
-    Converte para o formato '1234,56' para evitar erros de validação.
+    Atualiza as contas fixas na planilha com lógica de compensação:
+    - NEKO (Coluna D): Recebe a parte dele POSITIVA (Débito com a Baka).
+    - BAKA (Coluna E): Recebe a parte dela NEGATIVA (Crédito, pois ela pagou o banco).
     """
     try:
         mes_alvo = mes_referencia if mes_referencia else datetime.now().strftime("%m/%Y")
         aba = conectar_sheets(mes_alvo)
 
-        # Limpeza para garantir formato numérico (Ex: R$ 1.234,56 -> 1234.56)
+        # 1. Limpeza para garantir formato numérico (Ex: R$ 1.234,56 -> 1234.56)
         valor_limpo = valor_str.replace('R$', '').replace('.', '').replace(',', '.').strip()
         valor_float = float(valor_limpo)
-        valor_fmt = "{:.2f}".format(valor_float).replace('.', ',')
 
-        # Mapeamento de nomes (Ex: 'Finances/Claro' -> 'CLARO')
+        # 2. Cálculo das partes (Baseado nas taxas de rateio)
+        parte_neko = valor_float * Config.RATEIO_NEKO
+        parte_baka = (valor_float * Config.RATEIO_BAKA) * -1  # Negativo pois a Baka pagou o boleto
+
+        # 3. Formatação para o padrão brasileiro (vírgula)
+        valor_fmt = "{:.2f}".format(valor_float).replace('.', ',')
+        neko_fmt = "{:.2f}".format(parte_neko).replace('.', ',')
+        baka_fmt = "{:.2f}".format(parte_baka).replace('.', ',')
+
+        # 4. Mapeamento de nomes (Ex: 'Finances/Claro' -> 'CLARO')
         mapa = {k.strip().lower(): v.strip() for k, v in
                 [item.split(':') for item in Config.MAPA_CATEGORIAS.split(',') if ':' in item]}
 
@@ -65,16 +74,20 @@ def atualizar_valor_planilha(item_nome, valor_str, mes_referencia=None):
                 nome_busca = real
                 break
 
+        # 5. Localização da célula e atualização em lote (Batch update para performance)
         celula = aba.find(re.compile(f"^{nome_busca}$", re.IGNORECASE))
 
-        # Atualiza Valor (Col C) e Rateio Neko (Col E)
-        aba.update_cell(celula.row, celula.col + 1, valor_fmt)
+        if celula:
+            # Atualiza Coluna C (Valor Total), D (Neko) e E (Baka)
+            aba.update_cell(celula.row, celula.col + 1, valor_fmt)  # Coluna C
+            aba.update_cell(celula.row, celula.col + 2, neko_fmt)  # Coluna D
+            aba.update_cell(celula.row, celula.col + 3, baka_fmt)  # Coluna E
 
-        valor_neko = "{:.2f}".format(valor_float * Config.RATEIO_NEKO).replace('.', ',')
-        aba.update_cell(celula.row, celula.col + 2, valor_neko)
-
-        logger.info(f"✅ Planilha: {nome_busca} atualizado para {valor_fmt}")
-        return True
+            logger.info(f"✅ Fatura {nome_busca} atualizada: Neko (+{neko_fmt}) | Baka ({baka_fmt})")
+            return True
+        else:
+            logger.warning(f"⚠️ Item '{nome_busca}' não encontrado na planilha.")
+            return False
     except Exception as e:
         logger.error(f"❌ Erro ao atualizar planilha: {e}")
         return False
