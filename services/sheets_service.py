@@ -178,33 +178,36 @@ def obter_resumo_financeiro():
 
 def obter_gastos_detalhados():
     """
-    Retorna uma lista de dicionários com todos os gastos do mês atual.
-    Corrigido para evitar erro de cabeçalhos duplicados/vazios.
+    Retorna uma lista de gastos ignorando o deslocamento inicial da planilha.
+    Considera que os headers estão na linha 2 e os dados na linha 3.
     """
     try:
         mes_alvo = datetime.now().strftime("%m/%Y")
         aba = conectar_sheets(mes_alvo)
 
-        # Definimos exatamente quais colunas queremos (A até F)
-        # para evitar que o gspread leia colunas vazias à direita
-        cabecalhos_esperados = ['CATEGORIA', 'ITEM', 'VALOR', 'NEKO', 'BAKA']
+        # Pegamos todos os valores da aba
+        todas_as_linhas = aba.get_all_values()
 
-        # Pegamos apenas o intervalo útil da planilha
-        # Isso ignora colunas fantasmas que causam o erro de duplicata ['']
-        registros = aba.get_all_records(expected_headers=cabecalhos_esperados)
+        # Validação: Precisamos de pelo menos 3 linhas (vazia, header, dado)
+        if len(todas_as_linhas) < 3:
+            return []
 
         gastos = []
-        for r in registros:
-            # Filtra apenas linhas que tenham um item e valor preenchido
-            if r.get('ITEM') and r.get('VALOR'):
-                gastos.append({
-                    'categoria': r.get('CATEGORIA', 'S/C'),
-                    'item': r.get('ITEM', 'Sem Nome'),
-                    'valor': r.get('VALOR'),
-                    'neko': r.get('NEKO', '0,00'),
-                    'baka': r.get('BAKA', '0,00')
-                })
+        # Pulamos as duas primeiras linhas (índices 0 e 1) para chegar nos dados reais
+        for linha in todas_as_linhas[2:]:
+            # Verificamos se a linha tem colunas e se o ITEM (Coluna B / Índice 1) existe
+            if len(linha) >= 3 and linha[1].strip():
+                # Tratamento para evitar que pegue linhas de rodapé ou tabelas laterais
+                # Filtramos apenas linhas que tenham a CATEGORIA preenchida (Coluna A / Índice 0)
+                if linha[0].strip():
+                    gastos.append({
+                        'categoria': linha[0].strip(),  # Coluna A
+                        'item': linha[1].strip(),  # Coluna B
+                        'valor': linha[2].strip(),  # Coluna C
+                        'neko': linha[3].strip() if len(linha) > 3 else "0,00",  # Coluna D
+                        'baka': linha[4].strip() if len(linha) > 4 else "0,00"  # Coluna E
+                    })
         return gastos
     except Exception as e:
-        logger.error(f"❌ Erro ao buscar gastos detalhados: {e}")
+        logger.error(f"❌ Erro ao buscar gastos detalhados (Linha 2 Header): {e}")
         return None
