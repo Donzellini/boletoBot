@@ -92,18 +92,21 @@ def lancar_gasto_dinamico(categoria, item, valor_str, user_id, mes_referencia=No
 
         valor_float = float(valor_str)
 
-        # Lógica de Rateio baseada em quem enviou (Neko ou Baka)
+        # Determina quem pagou e calcula as partes
         if str(user_id) == Config.ID_NEKO:
-            taxa_do_parceiro = Config.RATEIO_BAKA
-            nome_parceiro = "BAKA"
+            # NEKO pagou: recebe crédito da parte que a BAKA deve
+            # A coluna do NEKO subtrai o que ele já adiantou
+            parte_neko = (valor_float * Config.RATEIO_BAKA) * -1
+            parte_baka = valor_float * Config.RATEIO_BAKA
+            logger.info(f"💰 Lançamento: NEKO pagou, BAKA deve {parte_baka}")
         else:
-            taxa_do_parceiro = Config.RATEIO_NEKO
-            nome_parceiro = "NEKO"
+            # BAKA pagou: recebe crédito da parte que o NEKO deve
+            parte_baka = (valor_float * Config.RATEIO_NEKO) * -1
+            parte_neko = valor_float * Config.RATEIO_NEKO
+            logger.info(f"💰 Lançamento: BAKA pagou, NEKO deve {parte_neko}")
 
-        parte_parceiro = valor_float * taxa_do_parceiro
-
-        val_fmt = "{:.2f}".format(valor_float).replace('.', ',')
-        parc_fmt = "{:.2f}".format(parte_parceiro).replace('.', ',')
+        val_neko_fmt = "{:.2f}".format(parte_neko).replace('.', ',')
+        val_baka_fmt = "{:.2f}".format(parte_baka).replace('.', ',')
 
         # --- LÓGICA SELETIVA DE ATUALIZAÇÃO ---
         celula_existente = None
@@ -130,14 +133,15 @@ def lancar_gasto_dinamico(categoria, item, valor_str, user_id, mes_referencia=No
             aba.insert_row([], linha_alvo)
             logger.info(f"➕ Inserindo novo gasto em {cat_upper}")
 
-        aba.update_cell(linha_alvo, 1, cat_upper)
-        aba.update_cell(linha_alvo, 2, item.upper())
-        aba.update_cell(linha_alvo, 3, val_fmt)
-        aba.update_cell(linha_alvo, 4, parc_fmt)
+        aba.update_cell(linha_alvo, 1, cat_upper)  # Coluna A: Categoria
+        aba.update_cell(linha_alvo, 2, item_upper)  # Coluna B: Item
+        aba.update_cell(linha_alvo, 3, valor_str.replace('.', ','))  # Coluna C: Valor Total
+        aba.update_cell(linha_alvo, 4, val_neko_fmt)  # Coluna D: Parte Neko
+        aba.update_cell(linha_alvo, 5, val_baka_fmt)  # Coluna E: Parte Baka
 
         return {
-            "sucesso": True, "categoria": cat_upper, "item": item.upper(),
-            "total": valor_float, "parte_parceiro": parte_parceiro, "nome_parceiro": nome_parceiro
+            "sucesso": True, "categoria": cat_upper, "item": item_upper,
+            "total": valor_float, "parte_neko": parte_neko, "parte_baka": parte_baka
         }
     except Exception as e:
         logger.error(f"❌ Erro no lançamento dinâmico: {e}")
