@@ -1,3 +1,5 @@
+import time
+
 import services.scrapers as scrapers_module
 from core.config import Config
 from core.database import inicializar_db, salvar_boleto_db
@@ -54,8 +56,12 @@ def executar_ciclo_coleta(solicitante_id=None):
 
 
 if __name__ == "__main__":
-    # Inicialização do Bot
     inicializar_db()
-
     logger.info("🤖 BoletoBot Online e aguardando comandos...")
-    bot.polling(non_stop=True)
+
+    while True:
+        try:
+            bot.polling(non_stop=True, interval=2, timeout=60)
+        except Exception as e:
+            logger.error(f"⚠️ Erro no polling detectado: {e}. Tentando reconectar em 15s...")
+            time.sleep(15)
