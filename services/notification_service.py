@@ -299,21 +299,40 @@ def cancelar_acao(call):
 
 
 @bot.message_handler(func=lambda m: m.text == "🧾 Detalhes do Mês")
-def exibir_lista_detalhada(message):
-    bot.send_chat_action(message.chat.id, 'typing')
-    from services.sheets_service import obter_gastos_detalhados
+def selecionar_mes_detalhes(message):
+    """Primeiro passo: Selecionar qual mês deseja visualizar."""
+    markup = types.InlineKeyboardMarkup(row_width=3)
 
-    gastos = obter_gastos_detalhados()
+    # Gerar botões para os últimos 6 meses (exemplo)
+    from datetime import datetime, timedelta
+    botoes = []
+    for i in range(6):
+        data = (datetime.now().replace(day=1) - timedelta(days=i * 30))
+        mes_ano = data.strftime("%m/%Y")
+        botoes.append(types.InlineKeyboardButton(mes_ano, callback_data=f"detalhe_mes_{mes_ano}"))
+
+    markup.add(*botoes)
+    bot.send_message(message.chat.id, "📅 Selecione o <b>mês</b> para ver os detalhes:",
+                     reply_markup=markup, parse_mode="HTML")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('detalhe_mes_'))
+def processar_detalhes_por_mes(call):
+    """Segundo passo: Buscar dados da aba selecionada."""
+    mes_selecionado = call.data.split('_')[-1]
+    bot.answer_callback_query(call.id, f"⌛ Buscando dados de {mes_selecionado}...")
+
+    from services.sheets_service import obter_gastos_detalhados
+    gastos = obter_gastos_detalhados(mes_alvo=mes_selecionado)  # Passamos o mês escolhido
 
     if not gastos:
-        return bot.send_message(message.chat.id, "📭 Nenhuma informação encontrada para este mês.")
+        return bot.send_message(call.message.chat.id, f"📭 Nenhuma informação em <b>{mes_selecionado}</b>.",
+                                parse_mode="HTML")
 
-    msg = f"📝 <b>LISTA DETALHADA - {datetime.now().strftime('%m/%Y')}</b>\n"
+    msg = f"📝 <b>LISTA DETALHADA - {mes_selecionado}</b>\n"
     msg += "━━━━━━━━━━━━━━━━━━━━\n\n"
 
     for g in gastos:
-        # Formatação elegante por linha
-        # 🟢 para crédito (negativo) e 🔴 para débito (positivo)
         emoji_n = "🟢" if "-" in str(g['neko']) else "🔴"
         emoji_b = "🟢" if "-" in str(g['baka']) else "🔴"
 
@@ -324,12 +343,9 @@ def exibir_lista_detalhada(message):
             "────────────────────\n"
         )
 
-        # O Telegram tem limite de 4096 caracteres por mensagem.
-        # Se a lista for muito longa, enviamos o que temos e começamos uma nova.
         if len(msg + linha) > 4000:
-            bot.send_message(message.chat.id, msg, parse_mode="HTML")
+            bot.send_message(call.message.chat.id, msg, parse_mode="HTML")
             msg = ""
-
         msg += linha
 
-    bot.send_message(message.chat.id, msg, parse_mode="HTML")
+    bot.send_message(call.message.chat.id, msg, parse_mode="HTML")

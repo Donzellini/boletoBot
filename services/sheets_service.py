@@ -176,38 +176,34 @@ def obter_resumo_financeiro():
         return None
 
 
-def obter_gastos_detalhados():
+# No services/sheets_service.py
+
+def obter_gastos_detalhados(mes_alvo=None):
     """
-    Retorna uma lista de gastos ignorando o deslocamento inicial da planilha.
-    Considera que os headers estão na linha 2 e os dados na linha 3.
+    Retorna a lista de gastos de um mês específico.
     """
     try:
-        mes_alvo = datetime.now().strftime("%m/%Y")
-        aba = conectar_sheets(mes_alvo)
+        # Se não passar mês, usa o atual
+        mes_busca = mes_alvo if mes_alvo else datetime.now().strftime("%m/%Y")
+        aba = conectar_sheets(mes_alvo=mes_busca)
 
-        # Pegamos todos os valores da aba
         todas_as_linhas = aba.get_all_values()
 
-        # Validação: Precisamos de pelo menos 3 linhas (vazia, header, dado)
         if len(todas_as_linhas) < 3:
             return []
 
         gastos = []
-        # Pulamos as duas primeiras linhas (índices 0 e 1) para chegar nos dados reais
         for linha in todas_as_linhas[2:]:
-            # Verificamos se a linha tem colunas e se o ITEM (Coluna B / Índice 1) existe
             if len(linha) >= 3 and linha[1].strip():
-                # Tratamento para evitar que pegue linhas de rodapé ou tabelas laterais
-                # Filtramos apenas linhas que tenham a CATEGORIA preenchida (Coluna A / Índice 0)
                 if linha[0].strip():
                     gastos.append({
-                        'categoria': linha[0].strip(),  # Coluna A
-                        'item': linha[1].strip(),  # Coluna B
-                        'valor': linha[2].strip(),  # Coluna C
-                        'neko': linha[3].strip() if len(linha) > 3 else "0,00",  # Coluna D
-                        'baka': linha[4].strip() if len(linha) > 4 else "0,00"  # Coluna E
+                        'categoria': linha[0].strip(),
+                        'item': linha[1].strip(),
+                        'valor': linha[2].strip(),
+                        'neko': linha[3].strip() if len(linha) > 3 else "0,00",
+                        'baka': linha[4].strip() if len(linha) > 4 else "0,00"
                     })
         return gastos
     except Exception as e:
-        logger.error(f"❌ Erro ao buscar gastos detalhados (Linha 2 Header): {e}")
+        logger.error(f"❌ Erro ao buscar detalhes de {mes_alvo}: {e}")
         return None
