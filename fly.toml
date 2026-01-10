@@ -1,0 +1,20 @@
+app = 'boletos-bot'
+primary_region = 'gru'
+
+# swap_size_mb = 512
+
+[build]
+  dockerfile = 'Dockerfile'
+  ignorefile = ".dockerignore"
+
+[deploy]
+  strategy = "immediate"
+
+[[vm]]
+  cpu_kind = 'shared'
+  cpus = 1
+  memory_mb = 512
+
+[[mounts]]
+  source = 'boletos_data'
+  destination = '/data'
