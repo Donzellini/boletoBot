@@ -179,19 +179,24 @@ def obter_resumo_financeiro():
 def obter_gastos_detalhados():
     """
     Retorna uma lista de dicionários com todos os gastos do mês atual.
+    Corrigido para evitar erro de cabeçalhos duplicados/vazios.
     """
     try:
         mes_alvo = datetime.now().strftime("%m/%Y")
         aba = conectar_sheets(mes_alvo)
 
-        # Pega todos os valores da planilha
-        # Assumindo que a estrutura é: A: Categoria, B: Item, C: Valor, D: Neko, E: Baka
-        registros = aba.get_all_records()
+        # Definimos exatamente quais colunas queremos (A até F)
+        # para evitar que o gspread leia colunas vazias à direita
+        cabecalhos_esperados = ['CATEGORIA', 'ITEM', 'VALOR', 'NEKO', 'BAKA']
+
+        # Pegamos apenas o intervalo útil da planilha
+        # Isso ignora colunas fantasmas que causam o erro de duplicata ['']
+        registros = aba.get_all_records(expected_headers=cabecalhos_esperados)
 
         gastos = []
         for r in registros:
-            # Filtra apenas linhas que tenham um valor preenchido
-            if r.get('VALOR'):
+            # Filtra apenas linhas que tenham um item e valor preenchido
+            if r.get('ITEM') and r.get('VALOR'):
                 gastos.append({
                     'categoria': r.get('CATEGORIA', 'S/C'),
                     'item': r.get('ITEM', 'Sem Nome'),
