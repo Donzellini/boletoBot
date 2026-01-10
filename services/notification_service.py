@@ -168,7 +168,6 @@ def processar_resumo_por_mes(call):
     bot.answer_callback_query(call.id, f"⌛ Consultando {mes_selecionado}...")
 
     from services.sheets_service import obter_resumo_financeiro
-    # Certifique-se de que sua obter_resumo_financeiro aceite o mes_alvo agora!
     resumo = obter_resumo_financeiro(mes_alvo=mes_selecionado)
 
     if resumo:

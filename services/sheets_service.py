@@ -174,9 +174,9 @@ def obter_resumo_financeiro(mes_alvo=None):
         aba = conectar_sheets(mes_busca)
 
         return {
-            "geral": aba.acell('G3').value,
-            "baka": aba.acell('G4').value,
-            "neko": aba.acell('G5').value
+            "geral": aba.acell('H3').value,
+            "baka": aba.acell('H4').value,
+            "neko": aba.acell('H5').value
         }
     except Exception as e:
         logger.error(f"❌ Erro ao ler resumo do mês {mes_alvo}: {e}")
