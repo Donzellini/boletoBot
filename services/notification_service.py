@@ -40,11 +40,13 @@ def main_menu():
     # Linha 3: Relatórios e Histórico (Lado a lado)
     m.row(
         types.KeyboardButton("📊 Resumo Mensal"),
-        types.KeyboardButton("✅ Ver Pagos")
+        types.KeyboardButton("🧾 Detalhes do Mês")
     )
 
-    # Linha 4: Manutenção (Discreta na base)
-    m.row(types.KeyboardButton("🗑️ Limpar Base de Dados"))
+    m.row(
+        types.KeyboardButton("✅ Ver Pagos"),
+        types.KeyboardButton("🗑️ Limpar Base de Dados")
+    )
 
     return m
 
@@ -295,3 +297,39 @@ def resetar_db(call):
 def cancelar_acao(call):
     bot.edit_message_text("❌ Operação cancelada.", call.message.chat.id, call.message.message_id)
 
+
+@bot.message_handler(func=lambda m: m.text == "🧾 Detalhes do Mês")
+def exibir_lista_detalhada(message):
+    bot.send_chat_action(message.chat.id, 'typing')
+    from services.sheets_service import obter_gastos_detalhados
+
+    gastos = obter_gastos_detalhados()
+
+    if not gastos:
+        return bot.send_message(message.chat.id, "📭 Nenhuma informação encontrada para este mês.")
+
+    msg = f"📝 <b>LISTA DETALHADA - {datetime.now().strftime('%m/%Y')}</b>\n"
+    msg += "━━━━━━━━━━━━━━━━━━━━\n\n"
+
+    for g in gastos:
+        # Formatação elegante por linha
+        # 🟢 para crédito (negativo) e 🔴 para débito (positivo)
+        emoji_n = "🟢" if "-" in str(g['neko']) else "🔴"
+        emoji_b = "🟢" if "-" in str(g['baka']) else "🔴"
+
+        linha = (
+            f"🔹 <b>{g['item']}</b> ({g['categoria']})\n"
+            f"💰 Total: <code>R$ {g['valor']}</code>\n"
+            f"└ 🙋‍♂️ Neko: {emoji_n} <code>{g['neko']}</code> | 🙋‍♀️ Baka: {emoji_b} <code>{g['baka']}</code>\n"
+            "────────────────────\n"
+        )
+
+        # O Telegram tem limite de 4096 caracteres por mensagem.
+        # Se a lista for muito longa, enviamos o que temos e começamos uma nova.
+        if len(msg + linha) > 4000:
+            bot.send_message(message.chat.id, msg, parse_mode="HTML")
+            msg = ""
+
+        msg += linha
+
+    bot.send_message(message.chat.id, msg, parse_mode="HTML")

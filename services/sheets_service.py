@@ -174,3 +174,32 @@ def obter_resumo_financeiro():
     except Exception as e:
         logger.error(f"❌ Erro ao ler resumo: {e}")
         return None
+
+
+def obter_gastos_detalhados():
+    """
+    Retorna uma lista de dicionários com todos os gastos do mês atual.
+    """
+    try:
+        mes_alvo = datetime.now().strftime("%m/%Y")
+        aba = conectar_sheets(mes_alvo)
+
+        # Pega todos os valores da planilha
+        # Assumindo que a estrutura é: A: Categoria, B: Item, C: Valor, D: Neko, E: Baka
+        registros = aba.get_all_records()
+
+        gastos = []
+        for r in registros:
+            # Filtra apenas linhas que tenham um valor preenchido
+            if r.get('VALOR'):
+                gastos.append({
+                    'categoria': r.get('CATEGORIA', 'S/C'),
+                    'item': r.get('ITEM', 'Sem Nome'),
+                    'valor': r.get('VALOR'),
+                    'neko': r.get('NEKO', '0,00'),
+                    'baka': r.get('BAKA', '0,00')
+                })
+        return gastos
+    except Exception as e:
+        logger.error(f"❌ Erro ao buscar gastos detalhados: {e}")
+        return None
