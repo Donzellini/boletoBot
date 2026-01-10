@@ -161,22 +161,27 @@ def lancar_gasto_dinamico(categoria, item, valor_str, user_id, mes_referencia=No
         return {"sucesso": False}
 
 
-def obter_resumo_financeiro():
-    """Lê os totais da tabela auxiliar ao lado (G8:H10)."""
+def obter_resumo_financeiro(mes_alvo=None):
+    """
+    Lê os totais da tabela (G3:G5).
+    Agora suporta a busca por um mês específico vindo do seletor.
+    """
     try:
-        mes_alvo = datetime.now().strftime("%m/%Y")
-        aba = conectar_sheets(mes_alvo)
+        # Se mes_alvo for None, usa o mês atual (comportamento original)
+        mes_busca = mes_alvo if mes_alvo else datetime.now().strftime("%m/%Y")
+
+        # Conecta na aba do mês selecionado
+        aba = conectar_sheets(mes_busca)
+
         return {
             "geral": aba.acell('G3').value,
             "baka": aba.acell('G4').value,
             "neko": aba.acell('G5').value
         }
     except Exception as e:
-        logger.error(f"❌ Erro ao ler resumo: {e}")
+        logger.error(f"❌ Erro ao ler resumo do mês {mes_alvo}: {e}")
         return None
 
-
-# No services/sheets_service.py
 
 def obter_gastos_detalhados(mes_alvo=None):
     """

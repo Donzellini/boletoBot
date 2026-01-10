@@ -1,6 +1,6 @@
 import os
 import re
-from datetime import datetime
+from datetime import datetime, timedelta
 
 import telebot
 from telebot import types, apihelper
@@ -49,6 +49,32 @@ def main_menu():
     )
 
     return m
+
+
+def gerar_teclado_meses(prefixo_callback):
+    """
+    Gera um teclado inline com meses de −3 a +3 em relação ao atual.
+    O prefixo_callback define se a ação será para 'resumo_mes_' ou 'detalhe_mes_'.
+    """
+    markup = types.InlineKeyboardMarkup(row_width=3)
+    # Dia 15 é o "porto seguro" para cálculos com timedelta
+    hoje = datetime.now().replace(day=15)
+    botoes = []
+
+    for i in range(-3, 4):
+        data_alvo = hoje + timedelta(days=i * 30)
+        mes_ano = data_alvo.strftime("%m/%Y")
+
+        # Ícone visual para o mês atual
+        label = f"📍 {mes_ano}" if i == 0 else mes_ano
+
+        botoes.append(types.InlineKeyboardButton(
+            label,
+            callback_data=f"{prefixo_callback}{mes_ano}"
+        ))
+
+    markup.add(*botoes)
+    return markup
 
 
 # --- NOTIFICAÇÕES AUTOMÁTICAS ---
@@ -131,20 +157,30 @@ def trigger_busca_manual(message):
 # --- RESUMO MENSAL ---
 @bot.message_handler(func=lambda m: m.text == "📊 Resumo Mensal")
 def exibir_resumo(message):
-    bot.send_chat_action(message.chat.id, 'typing')
+    markup = gerar_teclado_meses("resumo_mes_")
+    bot.send_message(message.chat.id, "📊 Escolha o mês para o <b>Resumo Geral</b>:",
+                     reply_markup=markup, parse_mode="HTML")
+
+
+@bot.callback_query_handler(func=lambda call: call.data.startswith('resumo_mes_'))
+def processar_resumo_por_mes(call):
+    mes_selecionado = call.data.split('_')[-1]
+    bot.answer_callback_query(call.id, f"⌛ Consultando {mes_selecionado}...")
+
     from services.sheets_service import obter_resumo_financeiro
-    resumo = obter_resumo_financeiro()
+    # Certifique-se de que sua obter_resumo_financeiro aceite o mes_alvo agora!
+    resumo = obter_resumo_financeiro(mes_alvo=mes_selecionado)
 
     if resumo:
         msg = (
-            f"📊 <b>RESUMO FINANCEIRO</b>\n"
+            f"📊 <b>RESUMO FINANCEIRO - {mes_selecionado}</b>\n"
             f"━━━━━━━━━━━━━━━━━━━━\n"
             f"💰 <b>Total Geral:</b> {resumo['geral']}\n"
             f"👤 <b>Total Baka:</b> {resumo['baka']}\n"
             f"👤 <b>Total Neko:</b> {resumo['neko']}\n"
             f"━━━━━━━━━━━━━━━━━━━━"
         )
-        bot.send_message(message.chat.id, msg, parse_mode="HTML")
+        bot.send_message(call.message.chat.id, msg, parse_mode="HTML")
 
 
 # --- RESUMO DE BOLETOS PAGOS ---
@@ -301,29 +337,8 @@ def cancelar_acao(call):
 @bot.message_handler(func=lambda m: m.text == "🧾 Detalhes do Mês")
 def selecionar_mes_detalhes(message):
     """Primeiro passo: Selecionar qual mês deseja visualizar."""
-    markup = types.InlineKeyboardMarkup(row_width=3)
-
-    # Gerar botões para os últimos 6 meses (exemplo)
-    from datetime import datetime, timedelta
-
-    hoje = datetime.now().replace(day=15)
-    botoes = []
-
-    for i in range(-3, 4):
-        # Lógica para calcular o mês relativo
-        data_alvo = hoje + timedelta(days=i * 30)
-        mes_ano = data_alvo.strftime("%m/%Y")
-
-        # Um diferencial visual: colocar um ícone no mês atual
-        label = f"📍 {mes_ano}" if i == 0 else mes_ano
-
-        botoes.append(types.InlineKeyboardButton(
-            label,
-            callback_data=f"detalhe_mes_{mes_ano}"
-        ))
-
-    markup.add(*botoes)
-    bot.send_message(message.chat.id, "📅 Selecione o <b>mês</b> para ver os detalhes:",
+    markup = gerar_teclado_meses("detalhe_mes_")
+    bot.send_message(message.chat.id, "📅 Escolha o mês para ver a <b>Lista Detalhada</b>:",
                      reply_markup=markup, parse_mode="HTML")
 
 
