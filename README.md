@@ -94,5 +94,4 @@ O projeto utiliza um `Dockerfile` otimizado para ambientes de baixa memória:
 - [ ] Rever lógica de busca dos boletos do endereço eletrónico
   - Possível ajuste: buscar o mês passado inteiro e o atual
   - Melhorar a identificação do mês de competência
-- [ ] Feature: acrescentar no resumo o detalhamento das despesas
 - [ ] Feature: Melhorar a descrição dos bletos pagos
