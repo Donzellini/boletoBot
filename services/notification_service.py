@@ -12,6 +12,7 @@ from utils.helpers import formatar_mensagem_boleto
 # Configurações iniciais
 apihelper.ENABLE_MIDDLEWARE = True
 bot = telebot.TeleBot(Config.TELEGRAM_TOKEN)
+TEMP_MANUAL = {}
 
 
 # --- MIDDLEWARE DE SEGURANÇA ---
@@ -224,39 +225,64 @@ def processar_valor_manual(message, categoria):
 
 
 def finalizar_lancamento_manual(message, categoria, valor):
-    """Agora, em vez de salvar direto, pergunta o mês."""
+    """
+    Em vez de pedir para digitar, exibe o seletor de meses reutilizando a lógica.
+    """
     descricao = message.text
-    # Sugere o mês atual como padrão para facilitar
-    mes_atual = datetime.now().strftime("%m/%Y")
+    user_id = message.from_user.id
 
-    msg = bot.send_message(
+    # Salva os dados no estado temporário
+    TEMP_MANUAL[user_id] = {
+        'categoria': categoria,
+        'valor': valor,
+        'descricao': descricao
+    }
+
+    # Reutiliza a lógica dos botões com o prefixo 'lncsalvar_'
+    markup = gerar_teclado_meses("lncsalvar_")
+
+    bot.send_message(
         message.chat.id,
-        f"📅 Para qual <b>mês</b> é esse gasto?\nResponda no formato MM/AAAA (Ex: {mes_atual}):"
+        f"📅 Quase lá! Selecione o <b>mês</b> para o gasto:\n"
+        f"📝 <i>{descricao} (R$ {valor:.2f})</i>",
+        reply_markup=markup,
+        parse_mode="HTML"
     )
-    # Passa os dados acumulados para o passo final
-    bot.register_next_step_handler(msg, salvar_final_com_mes, categoria, valor, descricao)
 
+@bot.callback_query_handler(func=lambda call: call.data.startswith('lncsalvar_'))
+def processar_salvamento_final_callback(call):
+    """Recebe o mês via botão e finalmente envia para a planilha."""
+    mes_ref = call.data.split('_')[-1]
+    user_id = call.from_user.id
 
-def salvar_final_com_mes(message, categoria, valor, descricao):
-    """Recebe o mês e finalmente envia para a planilha."""
-    mes_ref = message.text.strip()
+    # Recupera os dados que guardamos no passo anterior
+    dados = TEMP_MANUAL.pop(user_id, None)
 
-    # Validação simples de formato
-    if not re.match(r'\d{2}/\d{4}', mes_ref):
-        bot.send_message(message.chat.id, "❌ Formato inválido! Use MM/AAAA. Tente lançar novamente.")
-        return
+    if not dados:
+        return bot.send_message(call.message.chat.id, "❌ Sessão expirada. Tente lançar o gasto novamente.")
+
+    bot.answer_callback_query(call.id, f"✅ Salvando em {mes_ref}...")
 
     from services.sheets_service import lancar_gasto_dinamico
-    # Enviamos o mes_ref para o serviço de planilha
-    res = lancar_gasto_dinamico(categoria, descricao, str(valor), message.from_user.id, mes_referencia=mes_ref)
+    res = lancar_gasto_dinamico(
+        dados['categoria'],
+        dados['descricao'],
+        str(dados['valor']),
+        user_id,
+        mes_referencia=mes_ref
+    )
 
     if res["sucesso"]:
         confirmacao = (
-            f"✅ <b>Lançado em {mes_ref}!</b>\n"
+            f"✅ <b>Lançado com Sucesso!</b>\n"
+            f"📅 Mês: {mes_ref}\n"
             f"📂 {res['categoria']} | 📝 {res['item']}\n"
-            f"💰 Total: R$ {res['total']:.2f}"
+            f"💰 Total: R$ {float(dados['valor']):.2f}"
         )
-        bot.send_message(message.chat.id, confirmacao, parse_mode="HTML")
+        # Edita a mensagem dos botões para a confirmação (fica mais limpo)
+        bot.edit_message_text(confirmacao, call.message.chat.id, call.message.message_id, parse_mode="HTML")
+    else:
+        bot.send_message(call.message.chat.id, "❌ Erro ao salvar na planilha. Verifique os logs.")
 
 
 # --- GERENCIAMENTO DE BOLETOS ---
