@@ -96,12 +96,12 @@ def lancar_gasto_dinamico(categoria, item, valor_str, user_id, mes_referencia=No
         if str(user_id) == Config.ID_NEKO:
             # NEKO pagou: recebe crédito da parte que a BAKA deve
             # A coluna do NEKO subtrai o que ele já adiantou
-            parte_neko = (valor_float * Config.RATEIO_BAKA) * -1
+            parte_neko = (valor_float * Config.RATEIO_NEKO) * -1
             parte_baka = valor_float * Config.RATEIO_BAKA
             logger.info(f"💰 Lançamento: NEKO pagou, BAKA deve {parte_baka}")
         else:
             # BAKA pagou: recebe crédito da parte que o NEKO deve
-            parte_baka = (valor_float * Config.RATEIO_NEKO) * -1
+            parte_baka = (valor_float * Config.RATEIO_BAKA) * -1
             parte_neko = valor_float * Config.RATEIO_NEKO
             logger.info(f"💰 Lançamento: BAKA pagou, NEKO deve {parte_neko}")
 
