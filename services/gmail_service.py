@@ -23,14 +23,15 @@ def buscar_faturas_email():
 
                 # --- PASSO 1: Extração do CORPO (Texto/HTML) ---
                 corpo = (msg.text + msg.html)
-                # O cerne: tratamos o corpo como um "documento" e extraímos o dicionário
                 dados_corpo = extrair_dados_de_texto(corpo)
 
                 novo_boleto.linha_digitavel = dados_corpo["linha"]
                 novo_boleto.pix = dados_corpo["pix"]
                 novo_boleto.valor = dados_corpo["valor"]
 
-                novo_boleto.mes_referencia = extrair_mes_referencia(corpo)
+                mes_corpo = extrair_mes_referencia(corpo)
+                if mes_corpo:
+                    novo_boleto.mes_referencia = mes_corpo
 
                 # --- PASSO 2: Links Externos (Bevi) ---
                 if ("aluguel" in label.lower() or "bevi" in label.lower()) and not novo_boleto.linha_digitavel:
@@ -40,6 +41,8 @@ def buscar_faturas_email():
                             path = baixar_boleto_bevi(link)
                             if path:
                                 dados_bevi = extrair_dados_pdf(path)
+                                if dados_bevi.get("mes_referencia"):
+                                    novo_boleto.mes_referencia = dados_bevi["mes_referencia"]
                                 # Atualiza apenas se o PDF trouxer dados novos
                                 if dados_bevi["linha"]: novo_boleto.linha_digitavel = dados_bevi["linha"]
                                 if dados_bevi["valor"]: novo_boleto.valor = dados_bevi["valor"]

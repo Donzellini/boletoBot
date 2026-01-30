@@ -47,13 +47,21 @@ def formatar_mensagem_boleto(boleto):
         f"`{conteudo}`"
     )
 
+
 def extrair_mes_referencia(texto):
     """
-    Busca uma data no formato DD/MM/AAAA e retorna MM/AAAA.
-    Se não encontrar, retorna o mês atual como fallback.
+    Busca a data de vencimento no texto e retorna MM/AAAA.
+    Prioriza o padrão 'Vencimento: DD/MM/AAAA'.
     """
     if texto:
-        match = re.search(r'(\d{2})[./](\d{2})[./](\d{4})', texto)
-        if match:
-            return f"{match.group(2)}/{match.group(3)}"
+        # 1. Tenta buscar especificamente a data após a palavra 'Vencimento'
+        match_vencimento = re.search(r'Vencimento[:\s]+(\d{2})[./](\d{2})[./](\d{4})', texto, re.IGNORECASE)
+        if match_vencimento:
+            return f"{match_vencimento.group(2)}/{match_vencimento.group(3)}"
+
+        # 2. Se não achar com o rótulo, busca qualquer data DD/MM/AAAA (comportamento atual)
+        match_generico = re.search(r'(\d{2})[./](\d{2})[./](\d{4})', texto)
+        if match_generico:
+            return f"{match_generico.group(2)}/{match_generico.group(3)}"
+
     return datetime.now().strftime("%m/%Y")
