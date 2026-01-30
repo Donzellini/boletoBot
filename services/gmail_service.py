@@ -7,7 +7,8 @@ from core.logger import logger
 from core.models import Boleto
 from core.config import Config
 from utils.helpers import extrair_mes_referencia
-from utils.parser_pdf import extrair_dados_de_texto, extrair_dados_pdf
+from utils.extractor import extrair_dados_de_texto
+from utils.parser_pdf import extrair_dados_pdf
 from utils.web_downloader import baixar_boleto_bevi
 
 
@@ -17,57 +18,50 @@ def buscar_faturas_email():
 
     with MailBox('imap.gmail.com').login(Config.GMAIL_USER, Config.GMAIL_PASS) as mailbox:
         for label in Config.LABELS_INTERESSE:
+            if not mailbox.folder.exists(label):
+                continue
+
             mailbox.folder.set(label)
             logger.info(f"📩 Verificando label: {label}")
 
-            for msg in mailbox.fetch(AND(date_gte=data_busca)):
-                corpo = (msg.text + msg.html)
+            # Pega o nome da categoria vindo da sua .env (ex: CONDOMÍNIO)
+            categoria_planilha = Config.MAPA_CATEGORIAS.get(label, label)
 
-                # 1. Identifica o mês de referência (Prioriza data de Vencimento no corpo)
+            for msg in mailbox.fetch(AND(date_gte=data_busca)):
+                # Limpa o corpo removendo caracteres de HTML que quebram regex
+                corpo = (msg.text + msg.html).replace('\xa0', ' ')
+
+                # 1. Usa o helper para definir o mês (prioriza Vencimento)
                 mes_ref = extrair_mes_referencia(corpo)
 
-                # Criamos o objeto base
-                novo_boleto = Boleto(origem=label, titulo=msg.subject, mes_referencia=mes_ref)
+                # 2. Usa o EXTRATOR CENTRAL para pegar Linha, Pix e Valor de uma vez
+                dados = extrair_dados_de_texto(corpo)
 
-                # --- LÓGICA ESPECÍFICA: LLZ / CONDOMÍNIO ---
-                if "condominio" in label.lower() or "llz" in corpo.lower():
-                    logger.info("🏠 Extraindo dados diretos do e-mail da LLZ...")
+                novo_boleto = Boleto(
+                    origem=categoria_planilha,
+                    titulo=msg.subject,
+                    mes_referencia=mes_ref,
+                    valor=dados["valor"],
+                    linha_digitavel=dados["linha"],
+                    pix=dados["pix"]
+                )
 
-                    # Valor: R$ 357,07 -> 357.07
-                    valor_match = re.search(r'R\$\s*(\d+,\d{2})', corpo)
-                    if valor_match:
-                        novo_boleto.valor = valor_match.group(1).replace(',', '.')
+                # --- LÓGICA DE APOIO: Se o corpo não bastou, tenta links/anexos ---
 
-                    # Linha Digitável: sequência de 47-48 dígitos
-                    linha_match = re.search(r'\d{47,48}', corpo)
-                    if linha_match:
-                        novo_boleto.linha_digitavel = linha_match.group(0)
-
-                    # Se já pegamos o que importa no corpo, salvamos e pulamos para o próximo e-mail
-                    if novo_boleto.linha_digitavel or novo_boleto.pix:
-                        boletos_encontrados.append(novo_boleto)
-                        continue
-
-                # --- LÓGICA GERAL: Extração de Texto do Corpo ---
-                dados_corpo = extrair_dados_de_texto(corpo)
-                if not novo_boleto.linha_digitavel: novo_boleto.linha_digitavel = dados_corpo["linha"]
-                if not novo_boleto.pix: novo_boleto.pix = dados_corpo["pix"]
-                if not novo_boleto.valor: novo_boleto.valor = dados_corpo["valor"]
-
-                # --- PASSO 2: Links Externos (Bevi/Aluguel) ---
+                # Caso Bevi/Aluguel (Links Externos)
                 if ("aluguel" in label.lower() or "bevi" in label.lower()) and not novo_boleto.linha_digitavel:
                     links = re.findall(r'href=[\'"]?([^\'" >]+)', msg.html)
                     for link in links:
                         if "cobranca" in link or "pagamento" in link:
                             path = baixar_boleto_bevi(link)
                             if path:
-                                dados_bevi = extrair_dados_pdf(path)
-                                if dados_bevi.get("mes_referencia"):
-                                    novo_boleto.mes_referencia = dados_bevi["mes_referencia"]
-                                if dados_bevi["linha"]: novo_boleto.linha_digitavel = dados_bevi["linha"]
-                                if dados_bevi["valor"]: novo_boleto.valor = dados_bevi["valor"]
+                                dados_pdf = extrair_dados_pdf(path)
+                                if dados_pdf["linha"]: novo_boleto.linha_digitavel = dados_pdf["linha"]
+                                if dados_pdf["valor"]: novo_boleto.valor = dados_pdf["valor"]
+                                if dados_pdf.get("mes_referencia"): novo_boleto.mes_referencia = dados_pdf[
+                                    "mes_referencia"]
 
-                # --- PASSO 3: Anexos PDF (Comgas, etc) ---
+                # Caso Geral (Anexos PDF)
                 if not novo_boleto.linha_digitavel and not novo_boleto.pix:
                     for att in msg.attachments:
                         if att.filename.lower().endswith('.pdf'):
@@ -81,10 +75,10 @@ def buscar_faturas_email():
                             if dados_pdf["linha"]: novo_boleto.linha_digitavel = dados_pdf["linha"]
                             if dados_pdf["pix"]: novo_boleto.pix = dados_pdf["pix"]
                             if dados_pdf["valor"]: novo_boleto.valor = dados_pdf["valor"]
-                            if dados_pdf.get("mes_referencia"): novo_boleto.mes_referencia = dados_pdf["mes_referencia"]
 
-                # Adiciona à lista final se tiver ao menos uma forma de pagamento
+                # Se encontrou forma de pagamento, valida e adiciona
                 if novo_boleto.linha_digitavel or novo_boleto.pix:
+                    logger.info(f"✅ Boleto identificado: {categoria_planilha} ({mes_ref})")
                     boletos_encontrados.append(novo_boleto)
 
     return boletos_encontrados
