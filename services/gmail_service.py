@@ -75,7 +75,7 @@ def buscar_faturas_email():
 
                 # Se encontrou forma de pagamento, valida e adiciona
                 if novo_boleto.linha_digitavel or novo_boleto.pix:
-                    logger.info(f"✅ Boleto identificado: {categoria_planilha} ({mes_ref})")
+                    logger.info(f"✅ Boleto identificado: {label} ({mes_ref})")
                     boletos_encontrados.append(novo_boleto)
 
     return boletos_encontrados
