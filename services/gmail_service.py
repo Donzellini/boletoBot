@@ -24,9 +24,6 @@ def buscar_faturas_email():
             mailbox.folder.set(label)
             logger.info(f"📩 Verificando label: {label}")
 
-            # Pega o nome da categoria vindo da sua .env (ex: CONDOMÍNIO)
-            categoria_planilha = Config.MAPA_CATEGORIAS.get(label, label)
-
             for msg in mailbox.fetch(AND(date_gte=data_busca)):
                 # Limpa o corpo removendo caracteres de HTML que quebram regex
                 corpo = (msg.text + msg.html).replace('\xa0', ' ')
@@ -38,7 +35,7 @@ def buscar_faturas_email():
                 dados = extrair_dados_de_texto(corpo)
 
                 novo_boleto = Boleto(
-                    origem=categoria_planilha,
+                    origem=label,
                     titulo=msg.subject,
                     mes_referencia=mes_ref,
                     valor=dados["valor"],
