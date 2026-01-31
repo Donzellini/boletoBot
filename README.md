@@ -91,7 +91,4 @@ O projeto utiliza um `Dockerfile` otimizado para ambientes de baixa memória:
 
 - [ ] Rever data de competência da conta de água 
   - Recupera o mês de competência, e não a data de vencimento, então lança na aba incorreta da planilha.
-- [ ] Rever lógica de busca dos boletos do endereço eletrónico
-  - Possível ajuste: buscar o mês passado inteiro e o atual
-  - Melhorar a identificação do mês de competência
-- [ ] Feature: Melhorar a descrição dos bletos pagos
+- [ ] Feature: Melhorar a descrição dos boletos pagos
