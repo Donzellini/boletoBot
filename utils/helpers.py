@@ -50,18 +50,29 @@ def formatar_mensagem_boleto(boleto):
 
 def extrair_mes_referencia(texto):
     """
-    Busca a data de vencimento no texto e retorna MM/AAAA.
-    Prioriza o padrão 'Vencimento: DD/MM/AAAA'.
+    Extrai o mês/ano baseado na DATA DE VENCIMENTO.
+    Focado em garantir que o lançamento caia no mês do pagamento.
     """
-    if texto:
-        # 1. Tenta buscar especificamente a data após a palavra 'Vencimento'
-        match_vencimento = re.search(r'Vencimento[:\s]+(\d{2})[./](\d{2})[./](\d{4})', texto, re.IGNORECASE)
-        if match_vencimento:
-            return f"{match_vencimento.group(2)}/{match_vencimento.group(3)}"
+    if not texto:
+        return datetime.now().strftime("%m/%Y")
 
-        # 2. Se não achar com o rótulo, busca qualquer data DD/MM/AAAA (comportamento atual)
-        match_generico = re.search(r'(\d{2})[./](\d{2})[./](\d{4})', texto)
-        if match_generico:
-            return f"{match_generico.group(2)}/{match_generico.group(3)}"
+    # Sanitização: Remove espaços excessivos e quebras de linha que grudam no PIX
+    texto_limpo = re.sub(r'\s+', ' ', texto).replace('\xa0', ' ')
 
+    # 1. Busca por 'Vencimento' ou 'Vence em'
+    # Ajustei a regex para aceitar o texto colado (Vencimento09/02/2026)
+    # e validar que o ano comece com '20' (evita o erro 2652)
+    match_venc = re.search(r'(?:Vencimento|Vence|Venc)[:\s]*(\d{2})[./](\d{2})[./](20\d{2})', texto_limpo, re.IGNORECASE)
+    if match_venc:
+        return f"{match_venc.group(2)}/{match_venc.group(3)}"
+
+    # 2. Busca genérica de data (DD/MM/YYYY) mas validando o século
+    # Isso evita pegar sequências numéricas aleatórias de protocolos
+    datas_encontradas = re.findall(r'(\d{2})[./](\d{2})[./](20\d{2})', texto_limpo)
+    if datas_encontradas:
+        # Pegamos a primeira data válida encontrada como vencimento provável
+        _, mes, ano = datas_encontradas[0]
+        return f"{mes}/{ano}"
+
+    # Fallback: Mês atual
     return datetime.now().strftime("%m/%Y")
