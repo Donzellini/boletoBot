@@ -117,7 +117,7 @@ def webhook():
     """
     try:
         json_data = request.get_json()
-        update = types.Update(data=json_data)
+        update = types.Update.de_json(json_data)
         bot.process_new_updates([update])
         return jsonify({"status": "ok"}), 200
     except Exception as e:
