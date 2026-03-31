@@ -1,6 +1,5 @@
 import os
 import logging
-import threading
 from flask import Flask, request, jsonify
 from flasgger import Flasgger
 from telebot import types
@@ -26,41 +25,27 @@ _webhook_initialized = False
 def inicializar_webhook():
     """Registra o webhook no Telegram na primeira execução."""
     global _webhook_initialized
-    
+
     if _webhook_initialized:
         return
-    
+
     _webhook_initialized = True
     inicializar_db()
-    
+
     WEBHOOK_URL = os.getenv('WEBHOOK_URL', '')
     logger.info(f"📋 WEBHOOK_URL configurada: {WEBHOOK_URL if WEBHOOK_URL else '❌ NÃO CONFIGURADA'}")
-    
-    if WEBHOOK_URL:
-        try:
-            logger.info(f"🔗 Removendo webhook antigo (fallback para polling)...")
-            bot.remove_webhook()
-            logger.info("✅ Webhook removido. Usando polling como fallback.")
-            
-        except Exception as e:
-            logger.error(f"❌ Erro ao remover webhook: {e}")
-    
-    # Inicia thread de polling em background
-    iniciar_polling_background()
 
+    if not WEBHOOK_URL:
+        logger.error("❌ WEBHOOK_URL não configurada. O bot não receberá mensagens.")
+        return
 
-def iniciar_polling_background():
-    """Inicia polling em thread separada para não bloquear Flask."""
-    def polling_thread():
-        logger.info("🤖 Iniciando BoletoBot via polling...")
-        try:
-            bot.polling(non_stop=True, timeout=30)
-        except Exception as e:
-            logger.error(f"❌ Erro no polling: {e}")
-    
-    thread = threading.Thread(target=polling_thread, daemon=True)
-    thread.start()
-    logger.info("✅ Thread de polling iniciada em background")
+    try:
+        logger.info(f"🔗 Registrando webhook em: {WEBHOOK_URL}")
+        bot.remove_webhook()
+        bot.set_webhook(url=WEBHOOK_URL)
+        logger.info("✅ Webhook registrado com sucesso.")
+    except Exception as e:
+        logger.error(f"❌ Erro ao registrar webhook: {e}")
 
 
 # Hook que roda antes do primeiro request
@@ -76,15 +61,11 @@ def executar_ciclo_coleta(solicitante_id=None):
     salva no banco de dados e notifica o usuário no Telegram.
     """
     try:
-        # 1. Garante que o banco de dados e tabelas existam
         inicializar_db()
         logger.info("🚀 Iniciando ciclo de coleta de faturas...")
 
-        # 2. Busca faturas no Gmail (PDFs e links)
         lista_faturas = buscar_faturas_email()
-        # lista_faturas = []
 
-        # 3. Executa Scrapers Web configurados no .env
         if Config.LISTA_FUNCOES_SCRAPERS:
             for nome_funcao in Config.LISTA_FUNCOES_SCRAPERS:
                 try:
@@ -97,15 +78,11 @@ def executar_ciclo_coleta(solicitante_id=None):
                 except Exception as e:
                     logger.error(f"❌ Erro ao executar scraper {nome_funcao}: {e}")
 
-        # 4. Processamento de Resultados
         if not lista_faturas:
             logger.info("Empty: Nenhum boleto novo encontrado.")
         else:
             for fatura in lista_faturas:
-                # Exibe no console/logs para monitoramento
                 exibir_resultado_extracao(fatura)
-
-                # Salva no banco (retorna True se for um boleto novo/inédito)
                 if salvar_boleto_db(fatura):
                     enviar_notificacao_fatura(fatura, target_user=solicitante_id)
                 else:
@@ -154,7 +131,7 @@ def index():
     return jsonify({
         "app": "BoletoBot",
         "status": "online",
-        "mode": "polling (background thread)",
+        "mode": "webhook",
         "endpoints": {
             "GET /": "Esta página",
             "GET /health": "Health check",
@@ -163,7 +140,7 @@ def index():
             "GET /webhook-info": "Info sobre status do webhook"
         },
         "telegram_bot": "@BoletoBot",
-        "last_updated": "2026-03-29"
+        "last_updated": "2026-03-31"
     }), 200
 
 
@@ -203,17 +180,16 @@ def webhook_register():
     """
     WEBHOOK_URL = os.getenv('WEBHOOK_URL', '')
     logger.info(f"📋 [WEBHOOK-REGISTER] WEBHOOK_URL: {WEBHOOK_URL if WEBHOOK_URL else '❌ NÃO CONFIGURADA'}")
-    
+
     if not WEBHOOK_URL:
         return jsonify({"error": "WEBHOOK_URL not configured"}), 400
-    
+
     try:
         logger.info(f"🔗 [MANUAL] Registrando webhook em {WEBHOOK_URL}")
         bot.remove_webhook()
         bot.set_webhook(url=WEBHOOK_URL)
         logger.info("✅ [MANUAL] Webhook registrado com sucesso!")
-        
-        # Verificar status
+
         webhook_info = bot.get_webhook_info()
         info = {
             "status": "webhook registered",
@@ -257,8 +233,6 @@ def webhook_info():
 
 
 if __name__ == "__main__":
-    # Fallback: Se rodar localmente com python main.py
     inicializar_webhook()
-    
-    logger.info("🤖 BoletoBot Online com polling (Gunicorn + background thread)")
+    logger.info("🤖 BoletoBot Online via webhook")
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 8000)), debug=False)
