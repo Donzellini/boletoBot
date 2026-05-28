@@ -187,7 +187,7 @@ def webhook_register():
     try:
         logger.info(f"🔗 [MANUAL] Registrando webhook em {WEBHOOK_URL}")
         bot.remove_webhook()
-        bot.set_webhook(url=WEBHOOK_URL)
+        bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
         logger.info("✅ [MANUAL] Webhook registrado com sucesso!")
 
         webhook_info = bot.get_webhook_info()
