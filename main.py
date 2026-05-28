@@ -42,7 +42,7 @@ def inicializar_webhook():
     try:
         logger.info(f"🔗 Registrando webhook em: {WEBHOOK_URL}")
         bot.remove_webhook()
-        bot.set_webhook(url=WEBHOOK_URL)
+        bot.set_webhook(url=WEBHOOK_URL, drop_pending_updates=True)
         logger.info("✅ Webhook registrado com sucesso.")
     except Exception as e:
         logger.error(f"❌ Erro ao registrar webhook: {e}")
